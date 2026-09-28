@@ -1,5 +1,6 @@
 package de.luiskun.ui;
 
+import de.luiskun.logic.Colors;
 import de.luiskun.util.FileManager;
 
 import javax.swing.*;
@@ -44,6 +45,14 @@ public class MenuBar extends JMenuBar {
         add(fileMenu);
 
         JMenu appearanceMenu = new JMenu("Appearance");
+        appearanceMenu.add(item("Switch to Light-Mode", null, () -> {
+            Colors.switchToLightMode();
+            mainFrame.changeColorMode();
+        }));
+        appearanceMenu.add(item("Switch to Dark-Mode", null, () -> {
+            Colors.switchToDarkMode();
+            mainFrame.changeColorMode();
+        }));
         add(appearanceMenu);
 
         JMenu settingsMenu = new JMenu("Settings");

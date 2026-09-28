@@ -38,13 +38,13 @@ public class SidePanel extends JPanel {
     }
 
     public void changeColorMode() {
-        setBackground(Colors.backgorundColor);
+        setBackground(Colors.backgroundColor);
 
         inputInfoLabel.setForeground(Colors.textColor);
-        inputInfoLabel.setBackground(Colors.backgorundColor);
+        inputInfoLabel.setBackground(Colors.backgroundColor);
 
         namesArea.setForeground(Colors.textColor);
-        namesArea.setBackground(Colors.backgorundColor);
+        namesArea.setBackground(Colors.backgroundColor);
         namesArea.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(Colors.textColor),
                 BorderFactory.createEmptyBorder(8, 8, 8, 8)

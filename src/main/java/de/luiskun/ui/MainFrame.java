@@ -73,7 +73,7 @@ public class MainFrame extends JFrame {
                     @Override
                     public void paint(Graphics g)
                     {
-                        g.setColor(Colors.backgorundColor);
+                        g.setColor(Colors.backgroundColor);
                         g.fillRect(0, 0, getSize().width, getSize().height);
                         super.paint(g);
                     }

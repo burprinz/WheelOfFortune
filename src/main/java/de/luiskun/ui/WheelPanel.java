@@ -24,7 +24,7 @@ public class WheelPanel extends JPanel {
     }
 
     public void changeColorMode() {
-        setBackground(Colors.backgorundColor);
+        setBackground(Colors.backgroundColor);
     }
 
     @Override
