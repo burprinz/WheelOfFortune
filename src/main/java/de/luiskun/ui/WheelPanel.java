@@ -1,5 +1,6 @@
 package de.luiskun.ui;
 
+import de.luiskun.logic.Colors;
 import de.luiskun.logic.WheelModel;
 
 import javax.swing.*;
@@ -20,6 +21,10 @@ public class WheelPanel extends JPanel {
         setBackground(Color.WHITE);
         setPreferredSize(new Dimension(600, 500));
         setMinimumSize(new Dimension(250, 250));
+    }
+
+    public void changeColorMode() {
+        setBackground(Colors.backgorundColor);
     }
 
     @Override
@@ -76,7 +81,7 @@ public class WheelPanel extends JPanel {
     }
 
     private void drawPointer(Graphics2D g2, int x, int wheelTop) {
-        g2.setColor(Color.BLACK);
+        g2.setColor(Colors.selectorColor);
         g2.fillPolygon(
                 new int[]{x - POINTER_SIZE, x + POINTER_SIZE, x},
                 new int[]{wheelTop - POINTER_SIZE, wheelTop - POINTER_SIZE, wheelTop + POINTER_SIZE * 2},

@@ -1,9 +1,14 @@
 package de.luiskun.ui;
 
+import de.luiskun.logic.Colors;
 import de.luiskun.logic.WheelModel;
 import de.luiskun.util.FileManager;
 
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.LineBorder;
+import javax.swing.plaf.basic.BasicSplitPaneDivider;
+import javax.swing.plaf.basic.BasicSplitPaneUI;
 import java.awt.*;
 import java.util.List;
 
@@ -11,6 +16,7 @@ public class MainFrame extends JFrame {
 
     private static final int FRAME_DELAY_MS = 16; // ca. 60 FPS
 
+    private final JSplitPane split;
     private final WheelModel model = new WheelModel();
     private final WheelPanel wheelPanel = new WheelPanel(model);
     private final SidePanel sidePanel = new SidePanel(this);
@@ -36,7 +42,7 @@ public class MainFrame extends JFrame {
 
         setLayout(new BorderLayout());
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, wheelPanel, sidePanel);
+        split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, wheelPanel, sidePanel);
         split.setResizeWeight(1.0);
         split.setContinuousLayout(true);
         split.setBorder(null);
@@ -51,6 +57,35 @@ public class MainFrame extends JFrame {
         pack();
         setMinimumSize(new Dimension(500, 350));
         setLocationRelativeTo(null);
+
+        changeColorMode();
+    }
+
+    public void changeColorMode() {
+        split.setUI(new BasicSplitPaneUI()
+        {
+            @Override
+            public BasicSplitPaneDivider createDefaultDivider()
+            {
+                return new BasicSplitPaneDivider(this)
+                {
+
+                    @Override
+                    public void paint(Graphics g)
+                    {
+                        g.setColor(Colors.backgorundColor);
+                        g.fillRect(0, 0, getSize().width, getSize().height);
+                        super.paint(g);
+                    }
+                };
+            }
+        });
+
+        split.setBorder(new LineBorder(Colors.textColor));
+
+        wheelPanel.changeColorMode();
+        sidePanel.changeColorMode();
+
     }
 
     private void applyNames() {
@@ -77,4 +112,5 @@ public class MainFrame extends JFrame {
             Popups.showWinnerDialog(this, sidePanel, model.getWinner());
         }
     }
+
 }
