@@ -1,11 +1,10 @@
 package de.luiskun.ui;
 
 import de.luiskun.logic.WheelModel;
-import de.luiskun.util.NameLoader;
+import de.luiskun.util.FileManager;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MainFrame extends JFrame {
@@ -14,12 +13,26 @@ public class MainFrame extends JFrame {
 
     private final WheelModel model = new WheelModel();
     private final WheelPanel wheelPanel = new WheelPanel(model);
-    private final SidePanel sidePanel = new SidePanel();
+    private final SidePanel sidePanel = new SidePanel(this);
     private final Timer timer = new Timer(FRAME_DELAY_MS, e -> tick());
+    private final FileManager fileManager = new FileManager(this, sidePanel);
+
+    boolean unsavedChanges = false;
 
     public MainFrame() {
-        super("Glücksrad");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        super("Wheel of Fortune");
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+
+        MainFrame mainFrame = this;
+
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                Popups.unsavedMessageDialog(mainFrame, fileManager);
+                fileManager.saveCurrentOpenedWheelAsDefault();
+                System.exit(0);
+            }
+        });
 
         setLayout(new BorderLayout());
 
@@ -28,14 +41,12 @@ public class MainFrame extends JFrame {
         split.setContinuousLayout(true);
         split.setBorder(null);
         add(split, BorderLayout.CENTER);
-        //add(wheelPanel, BorderLayout.CENTER);
-        //add(sidePanel, BorderLayout.EAST);
 
-        sidePanel.setNames(NameLoader.loadDefault());
+        sidePanel.setNames(fileManager.loadLastOpenedWheel());
         applyNames();
         sidePanel.onNamesChanged(this::applyNames);
         sidePanel.onSpin(this::spin);
-        setJMenuBar(new MenuBar());
+        setJMenuBar(new MenuBar(this, fileManager));
 
         pack();
         setMinimumSize(new Dimension(500, 350));
@@ -53,7 +64,6 @@ public class MainFrame extends JFrame {
         if (!model.spin()) {
             return;
         }
-        //sidePanel.setResult("");
         sidePanel.setSpinning(true);
         timer.start();
     }
@@ -63,29 +73,8 @@ public class MainFrame extends JFrame {
         wheelPanel.repaint();
         if (finished) {
             timer.stop();
-            //sidePanel.setResult(model.getWinner());
             sidePanel.setSpinning(false);
-            showWinnerDialog(model.getWinner());
-        }
-    }
-
-    private void showWinnerDialog(String winner) {
-        Object[] options = {"Keep", "Remove"};
-        int choice = JOptionPane.showOptionDialog(
-                this,
-                winner,
-                "Winner",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.INFORMATION_MESSAGE,
-                null,
-                options,
-                options[0]
-        );
-
-        if (choice == 1) {
-            List<String> names = new ArrayList<>(sidePanel.getNames());
-            names.remove(winner);
-            sidePanel.setNames(names);
+            Popups.showWinnerDialog(this, sidePanel, model.getWinner());
         }
     }
 }

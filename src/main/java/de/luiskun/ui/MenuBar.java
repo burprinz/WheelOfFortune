@@ -1,22 +1,45 @@
 package de.luiskun.ui;
 
+import de.luiskun.util.FileManager;
+
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MenuBar extends JMenuBar {
 
-    public MenuBar() {
-        int shortcut = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+    private final MainFrame mainFrame;
+    private final FileManager files;
+
+    public MenuBar(MainFrame main, FileManager files) {
+        this.mainFrame = main;
+        this.files = files;
 
         JMenu fileMenu = new JMenu("Wheels");
-        fileMenu.add(item("Create Wheel", null, () -> {
-
+        fileMenu.add(item("Create", null, () -> {
+            if (Popups.unsavedMessageDialog(mainFrame, files)) {
+                files.newWheel();
+                mainFrame.unsavedChanges = false;
+            };
         }));
-        fileMenu.add(item("Load Wheel", null, () -> {
-
+        fileMenu.add(item("Load", null, () -> {
+            if (Popups.unsavedMessageDialog(mainFrame, files)) {
+                files.load();
+                mainFrame.unsavedChanges = false;
+            }
         }));
-        fileMenu.add(item("Save Wheel", null, () -> {
-
+        fileMenu.add(item("Save", null, () -> {
+            boolean saved = files.save();
+            if (saved) {
+                mainFrame.unsavedChanges = false;
+            }
+        }));
+        fileMenu.add(item("Save as", null, () -> {
+            boolean saved = files.saveAs();
+            if (saved) {
+                mainFrame.unsavedChanges = false;
+            }
         }));
         add(fileMenu);
 
@@ -27,7 +50,6 @@ public class MenuBar extends JMenuBar {
         add(settingsMenu);
 
     }
-
 
     private static JMenuItem item(String text, KeyStroke key, Runnable action) {
         JMenuItem item = new JMenuItem(text);

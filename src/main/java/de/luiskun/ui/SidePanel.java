@@ -16,8 +16,12 @@ public class SidePanel extends JPanel {
     private final JTextArea namesArea = new JTextArea();
     private final JButton spinButton = new JButton("Spin");
 
-    public SidePanel() {
+    private final MainFrame frame;
+
+    public SidePanel(MainFrame frame) {
         super(new BorderLayout(8, 8));
+        this.frame = frame;
+
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         setPreferredSize(new Dimension(220, 0));
 
@@ -43,26 +47,25 @@ public class SidePanel extends JPanel {
             @Override
             public void insertUpdate(DocumentEvent e) {
                 listener.run();
+                frame.unsavedChanges = true;
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
                 listener.run();
+                frame.unsavedChanges = true;
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
                 listener.run();
+                frame.unsavedChanges = true;
             }
         });
     }
 
     public void onSpin(Runnable listener) {
         spinButton.addActionListener(e -> listener.run());
-    }
-
-    public void setResult(String text) {
-        //resultLabel.setText(text.isEmpty() ? " " : text);
     }
 
     public void setSpinEnabled(boolean enabled) {

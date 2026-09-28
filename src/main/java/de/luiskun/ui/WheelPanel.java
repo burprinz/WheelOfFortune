@@ -37,7 +37,7 @@ public class WheelPanel extends JPanel {
             return;
         }
         if (names.isEmpty()) {
-            drawCenteredMessage(g2, "Keine Namen vorhanden");
+            drawCenteredMessage(g2, "No entries");
             g2.dispose();
             return;
         }
