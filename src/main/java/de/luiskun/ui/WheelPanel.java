@@ -62,7 +62,7 @@ public class WheelPanel extends JPanel {
         for (int i = 0; i < n; i++) {
             double start = angle + i * sliceSize;
 
-            g2.setColor(colorFor(i));
+            g2.setColor(Colors.colorFor(i));
             g2.fill(new Arc2D.Double(cx - r, cy - r, diameter, diameter, start, sliceSize, Arc2D.PIE));
 
             double mid = Math.toRadians(start + sliceSize / 2.0);
@@ -94,10 +94,6 @@ public class WheelPanel extends JPanel {
         g2.drawString(message,
                 (getWidth() - fm.stringWidth(message)) / 2,
                 (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
-    }
-
-    private static Color colorFor(int index) {
-        return Color.getHSBColor((index * 0.618033988749895f) % 1.0f, 0.65f, 0.9f);
     }
 
     private static String fit(String text, FontMetrics fm, int maxWidth) {

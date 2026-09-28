@@ -5,11 +5,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class WheelModel {
 
-    private static final double MIN_TOP_SPEED = 10;
-    private static final double MAX_TOP_SPEED = 30;
-    private static final double ACCELERATION = 0.5;
-    private static final double FRICTION = 0.985;
-    private static final double STOP_SPEED = 0.1;
 
     private List<String> names = List.of();
 
@@ -44,7 +39,7 @@ public class WheelModel {
             return false;
         }
         speed = 0;
-        topSpeed = MIN_TOP_SPEED + ThreadLocalRandom.current().nextDouble() * (MAX_TOP_SPEED - MIN_TOP_SPEED);
+        topSpeed = WheelConstants.MIN_TOP_SPEED + ThreadLocalRandom.current().nextDouble() * (WheelConstants.MAX_TOP_SPEED - WheelConstants.MIN_TOP_SPEED);
         braking = false;
         spinning = true;
         return true;
@@ -63,14 +58,14 @@ public class WheelModel {
         angle = (angle + speed) % 360;
 
         if (!braking) {
-            speed += ACCELERATION;
+            speed += WheelConstants.ACCELERATION;
             if (speed >= topSpeed) {
                 speed = topSpeed;
                 braking = true;
             }
         } else {
-            speed *= FRICTION;
-            if (speed < STOP_SPEED) {
+            speed *= WheelConstants.FRICTION;
+            if (speed < WheelConstants.STOP_SPEED) {
                 speed = 0;
                 spinning = false;
                 return true;
@@ -88,5 +83,11 @@ public class WheelModel {
         double sliceSize = 360.0 / n;
         double relativeAngle = ((90.0 - angle) % 360 + 360) % 360;
         return names.get((int) (relativeAngle / sliceSize) % n);
+    }
+
+    public void stop() {
+        this.speed = 0;
+        this.spinning = false;
+        this.braking = false;
     }
 }

@@ -4,9 +4,8 @@ import de.luiskun.logic.Colors;
 import de.luiskun.util.FileManager;
 
 import javax.swing.*;
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 public class MenuBar extends JMenuBar {
 
@@ -18,25 +17,33 @@ public class MenuBar extends JMenuBar {
         this.files = files;
 
         JMenu fileMenu = new JMenu("Wheels");
-        fileMenu.add(item("Create", null, () -> {
+        fileMenu.add(item("Create",
+                KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK),
+                () -> {
             if (Popups.unsavedMessageDialog(mainFrame, files)) {
                 files.newWheel();
                 mainFrame.unsavedChanges = false;
             };
         }));
-        fileMenu.add(item("Load", null, () -> {
+        fileMenu.add(item("Load",
+                KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK),
+                () -> {
             if (Popups.unsavedMessageDialog(mainFrame, files)) {
                 files.load();
                 mainFrame.unsavedChanges = false;
             }
         }));
-        fileMenu.add(item("Save", null, () -> {
+        fileMenu.add(item("Save",
+                KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
+                () -> {
             boolean saved = files.save();
             if (saved) {
                 mainFrame.unsavedChanges = false;
             }
         }));
-        fileMenu.add(item("Save as", null, () -> {
+        fileMenu.add(item("Save as",
+                KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
+                () -> {
             boolean saved = files.saveAs();
             if (saved) {
                 mainFrame.unsavedChanges = false;
@@ -56,6 +63,9 @@ public class MenuBar extends JMenuBar {
         add(appearanceMenu);
 
         JMenu settingsMenu = new JMenu("Settings");
+        settingsMenu.add(item("Change wheel constants", null, () -> {
+            mainFrame.switchMode(MainFrame.MODE_CONSTANT_SETTINGS);
+        }));
         add(settingsMenu);
 
     }

@@ -28,4 +28,8 @@ public class Colors {
         textColor = lightmodeText;
         selectorColor = lightmodeSelector;
     }
+
+    public static Color colorFor(int index) {
+        return Color.getHSBColor((index * 0.618033988749895f) % 1.0f, 0.65f, 0.9f);
+    }
 }
