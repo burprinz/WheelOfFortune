@@ -11,10 +11,12 @@ import javax.swing.*;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,8 +63,11 @@ public class MainFrame extends JFrame {
         cardPanel.add(createSplit(testWheelPanel, settingsSidePanel), String.valueOf(MODE_CONSTANT_SETTINGS));
         add(cardPanel);
 
-        // Space for Spinning
-        KeyStroke ks = KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0);
+        // Strg+Space for Spinning
+        KeyStroke ks = KeyStroke.getKeyStroke(
+                KeyEvent.VK_SPACE,
+                Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()
+        );
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(ks,"spin");
         getRootPane().getActionMap().put("spin", new AbstractAction() {
@@ -93,6 +98,36 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
 
         changeColorMode();
+
+        // Wenn TXT reingezogen wird
+        setTransferHandler(new TransferHandler(){
+            @Override
+            public boolean canImport(TransferSupport s){
+                return s.isDataFlavorSupported(
+                        DataFlavor.javaFileListFlavor
+                );
+            }
+
+            @Override
+            public boolean importData(TransferSupport s){
+                if(!canImport(s))
+                    return false;
+                try{
+                    List<File> files = (List<File>)
+                            s.getTransferable().getTransferData(
+                                    DataFlavor.javaFileListFlavor
+                            );
+                    if(files.isEmpty())
+                        return false;
+                    if(!Popups.unsavedMessageDialog(MainFrame.this,fileManager))
+                        return false;
+                    fileManager.load(files.get(0).toPath());
+                    return true;
+                }catch(Exception e){
+                    return false;
+                }
+            }
+        });
     }
 
     public void switchMode(int mode) {
@@ -278,5 +313,20 @@ public class MainFrame extends JFrame {
         }
         fileManager.saveCurrentOpenedWheelAsDefault();
         System.exit(0);
+    }
+
+    public void shuffleNames(){
+        sidePanel.shuffleNames();
+        fileManager.markUnsaved();
+    }
+
+    public void sortNames(){
+        sidePanel.sortNames();
+        fileManager.markUnsaved();
+    }
+
+    public void removeDuplicates(){
+        sidePanel.removeDuplicates();
+        fileManager.markUnsaved();
     }
 }

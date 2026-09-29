@@ -10,6 +10,9 @@ import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 
 /**
  * Rechte Seitenleiste: Namensliste bearbeiten und Rad drehen.
@@ -115,5 +118,24 @@ public class SidePanel extends JPanel {
                 fire.run();
             }
         });
+    }
+
+    public void shuffleNames() {
+        List<String> list = new ArrayList<>(getNames());
+        Collections.shuffle(list);
+        setNames(list);
+    }
+
+    public void sortNames() {
+        List<String> list = new ArrayList<>(getNames());
+        list.sort(String.CASE_INSENSITIVE_ORDER);
+        setNames(list);
+    }
+
+    public void removeDuplicates() {
+        List<String> unique = new ArrayList<>(
+                new LinkedHashSet<>(getNames())
+        );
+        setNames(unique);
     }
 }

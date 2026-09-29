@@ -8,6 +8,7 @@ import javax.swing.border.LineBorder;
 import java.awt.Graphics;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +43,34 @@ public class MenuBar extends JMenuBar {
         item(wheels, "Save as", shortcut(KeyEvent.VK_S, KeyEvent.SHIFT_DOWN_MASK), files::saveAs);
         spinLockedItems.addAll(items);
 
+        JMenu recent = new JMenu("Recent");
+        wheels.add(recent);
+        menus.add(recent);
+
+        Runnable refreshRecent = () -> {
+            recent.removeAll();
+            for(Path p : files.getRecentFiles()){
+                JMenuItem i = new JMenuItem(
+                        p.getFileName().toString()
+                );
+                i.addActionListener(e -> {
+
+                    if(Popups.unsavedMessageDialog(mainFrame,files))
+                        files.load(p);
+
+                });
+                recent.add(i);
+                items.add(i);
+            }
+
+            if(recent.getItemCount()==0){
+                JMenuItem empty = new JMenuItem("Empty");
+                empty.setEnabled(false);
+                recent.add(empty);
+            }
+        };
+        refreshRecent.run();
+
         JMenu appearance = menu("Appearance");
         JCheckBoxMenuItem darkMode = new JCheckBoxMenuItem("Dark mode", Colors.isDarkMode());
         darkMode.addActionListener(e -> {
@@ -62,6 +91,19 @@ public class MenuBar extends JMenuBar {
         undoItem = item(settings, "Undo removal", shortcut(KeyEvent.VK_Z, 0), mainFrame::undoRemoval);
         redoItem = item(settings, "Redo removal", shortcut(KeyEvent.VK_Z, KeyEvent.SHIFT_DOWN_MASK), mainFrame::redoRemoval);
         refreshHistoryItems();
+
+        JMenu tools = menu("Tools");
+        item(tools,"Shuffle",null,()->{
+            mainFrame.shuffleNames();
+        });
+
+        item(tools,"Sort A-Z",null,()->{
+            mainFrame.sortNames();
+        });
+
+        item(tools,"Remove duplicates",null,()->{
+            mainFrame.removeDuplicates();
+        });
     }
 
     /**

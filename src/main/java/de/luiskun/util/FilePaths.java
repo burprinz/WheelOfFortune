@@ -41,4 +41,14 @@ public final class FilePaths {
     public static Path lastWheelConfig() {
         return dataDir().resolve(LAST_WHEEL_FILE_NAME);
     }
+
+    public static Path appDir() throws IOException {
+        Path dir = Paths.get(
+                System.getProperty("user.home"),
+                ".wheeloffortune"
+        );
+
+        Files.createDirectories(dir);
+        return dir;
+    }
 }

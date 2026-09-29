@@ -10,10 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FileManager {
     private static final String APP_TITLE = "WheelOfFortune";
+    private static final int MAX_RECENT = 8;
 
     private static final List<String> DEFAULT_NAMES = List.of("Name1", "Name2", "Name3", "Name4");
 
@@ -107,11 +109,35 @@ public class FileManager {
             String text = Files.readString(file, StandardCharsets.UTF_8);
             sidePanel.setNames(NameLoader.parse(text));
             currentFile = file;
+            remember(file);
             unsaved = false;
             updateTitle();
             wheelReplacedListener.run();
         } catch (IOException e) {
             showError("Could not read file:\n" + e.getMessage());
+        }
+    }
+
+    public void load(Path file){
+
+        try{
+
+            String text = Files.readString(file);
+
+            sidePanel.setNames(NameLoader.parse(text));
+
+            currentFile = file;
+            unsaved = false;
+
+            remember(file);
+
+            updateTitle();
+
+            wheelReplacedListener.run();
+
+        }catch(IOException e){
+
+            showError("Could not read file.");
         }
     }
 
@@ -138,6 +164,7 @@ public class FileManager {
         try {
             Files.writeString(file, String.join("\n", sidePanel.getNames()), StandardCharsets.UTF_8);
             currentFile = file;
+            remember(file);
             unsaved = false;
             updateTitle();
             return true;
@@ -180,5 +207,62 @@ public class FileManager {
     private void updateTitle() {
         String name = currentFile == null ? "Untitled" : currentFile.getFileName().toString();
         frame.setTitle((unsaved ? "*" : "") + name + " – " + APP_TITLE);
+    }
+
+    public List<Path> getRecentFiles() {
+        try {
+            Path cfg = FilePaths.appDir().resolve("recent.txt");
+
+            if(!Files.exists(cfg))
+                return List.of();
+
+            return Files.readAllLines(cfg).stream()
+                    .map(Path::of)
+                    .filter(Files::exists)
+                    .limit(MAX_RECENT)
+                    .toList();
+
+        } catch(IOException e){
+            return List.of();
+        }
+    }
+
+    public static Path appDir() throws IOException {
+        Path dir = Paths.get(
+                System.getProperty("user.home"),
+                ".wheeloffortune"
+        );
+
+        Files.createDirectories(dir);
+        return dir;
+    }
+
+    private void remember(Path file){
+
+        try{
+
+            List<String> entries = new ArrayList<>();
+
+            entries.add(file.toAbsolutePath().toString());
+
+            for(Path p : getRecentFiles()){
+
+                String s = p.toAbsolutePath().toString();
+
+                if(!s.equals(entries.get(0)))
+                    entries.add(s);
+            }
+
+            if(entries.size() > MAX_RECENT)
+                entries = entries.subList(0,MAX_RECENT);
+
+            Files.createDirectories(FilePaths.appDir());
+
+            Files.write(
+                    FilePaths.appDir().resolve("recent.txt"),
+                    entries
+            );
+
+        }catch(IOException ignored){}
     }
 }
