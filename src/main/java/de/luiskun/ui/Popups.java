@@ -4,8 +4,6 @@ import de.luiskun.util.FileManager;
 
 import javax.swing.JOptionPane;
 import java.awt.Component;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class Popups {
 
@@ -43,19 +41,15 @@ public final class Popups {
     }
 
     /**
-     * Zeigt den Gewinner. Bei "Remove" wird genau der Eintrag mit dem Index entfernt
-     * (bei doppelten Namen würde ein Entfernen per Name den falschen treffen).
+     * Zeigt den Gewinner.
+     *
+     * @return true, wenn der Eintrag entfernt werden soll ("Remove")
      */
-    public static void showWinnerDialog(Component parent, SidePanel sidePanel, FileManager files, int winnerIndex) {
-        List<String> names = new ArrayList<>(sidePanel.getNames());
-        if (winnerIndex < 0 || winnerIndex >= names.size()) {
-            return;
-        }
-
+    public static boolean showWinnerDialog(Component parent, String winner) {
         Object[] options = {"Keep", "Remove"};
         int choice = JOptionPane.showOptionDialog(
                 parent,
-                names.get(winnerIndex),
+                winner,
                 "Winner",
                 JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE,
@@ -63,11 +57,6 @@ public final class Popups {
                 options,
                 options[0]
         );
-
-        if (choice == 1) {
-            names.remove(winnerIndex);
-            sidePanel.setNames(names);
-            files.markUnsaved();
-        }
+        return choice == 1;
     }
 }

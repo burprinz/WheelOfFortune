@@ -1,6 +1,8 @@
 package de.luiskun.ui;
 
 import de.luiskun.logic.Colors;
+import de.luiskun.logic.RemovalHistory;
+import de.luiskun.logic.RemovalHistory.Removal;
 import de.luiskun.logic.WheelModel;
 import de.luiskun.util.FileManager;
 
@@ -12,6 +14,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainFrame extends JFrame {
@@ -39,6 +42,8 @@ public class MainFrame extends JFrame {
     private final FileManager fileManager = new FileManager(this, sidePanel);
     private final MenuBar menuBar = new MenuBar(this, fileManager);
 
+    private final RemovalHistory removalHistory = new RemovalHistory();
+
     public MainFrame() {
         super("Wheel of Fortune");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
@@ -60,6 +65,10 @@ public class MainFrame extends JFrame {
         sidePanel.onNamesChanged(this::applyNames);
         sidePanel.onUserEdit(fileManager::markUnsaved);
         sidePanel.onSpin(this::spin);
+        fileManager.onWheelReplaced(() -> {
+            removalHistory.clear();
+            updateHistoryMenu();
+        });
 
         settingsSidePanel.onTestSpin(this::testSpin);
 
@@ -162,8 +171,70 @@ public class MainFrame extends JFrame {
         } else {
             setSpinning(false);
             applyNames();
-            Popups.showWinnerDialog(this, sidePanel, fileManager, spinModel.getWinnerIndex());
+            offerWinnerRemoval();
         }
+    }
+
+    /** Fragt nach dem Spin, ob der Gewinner behalten oder entfernt werden soll. */
+    private void offerWinnerRemoval() {
+        List<String> names = new ArrayList<>(sidePanel.getNames());
+        int index = spinModel.getWinnerIndex();
+        if (index < 0 || index >= names.size()) {
+            return;
+        }
+
+        String winner = names.get(index);
+        if (!Popups.showWinnerDialog(this, winner)) {
+            return;
+        }
+
+        names.remove(index);
+        sidePanel.setNames(names);
+        removalHistory.record(new Removal(index, winner));
+        fileManager.markUnsaved();
+        updateHistoryMenu();
+    }
+
+    /** Fügt den zuletzt entfernten Eintrag an seiner alten Position wieder ein. */
+    public void undoRemoval() {
+        Removal removal = removalHistory.popUndo();
+        if (removal == null) {
+            return;
+        }
+
+        List<String> names = new ArrayList<>(sidePanel.getNames());
+        int index = Math.min(removal.index(), names.size());
+        names.add(index, removal.name());
+        sidePanel.setNames(names);
+
+        removalHistory.pushRedo(new Removal(index, removal.name()));
+        fileManager.markUnsaved();
+        updateHistoryMenu();
+    }
+
+    /** Entfernt den zuletzt wiederhergestellten Eintrag erneut. */
+    public void redoRemoval() {
+        Removal removal = removalHistory.popRedo();
+        if (removal == null) {
+            return;
+        }
+
+        List<String> names = new ArrayList<>(sidePanel.getNames());
+        boolean sameSpot = removal.index() < names.size() && names.get(removal.index()).equals(removal.name());
+        int index = sameSpot ? removal.index() : names.indexOf(removal.name());
+
+        // Wurde der Eintrag zwischenzeitlich von Hand gelöscht, gibt es nichts mehr zu entfernen
+        if (index >= 0) {
+            names.remove(index);
+            sidePanel.setNames(names);
+            removalHistory.pushUndo(new Removal(index, removal.name()));
+            fileManager.markUnsaved();
+        }
+        updateHistoryMenu();
+    }
+
+    private void updateHistoryMenu() {
+        menuBar.setHistoryState(removalHistory.canUndo(), removalHistory.canRedo());
     }
 
     private void closeApplication() {

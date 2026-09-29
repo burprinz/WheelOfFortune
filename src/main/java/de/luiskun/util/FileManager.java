@@ -22,6 +22,7 @@ public class FileManager {
 
     private Path currentFile;
     private boolean unsaved;
+    private Runnable wheelReplacedListener = () -> { };
 
     public FileManager(JFrame frame, SidePanel sidePanel) {
         this.frame = frame;
@@ -41,6 +42,13 @@ public class FileManager {
             unsaved = true;
             updateTitle();
         }
+    }
+
+    /**
+     * Wird aufgerufen, wenn ein anderes Rad geladen oder ein neues erstellt wurde.
+     */
+    public void onWheelReplaced(Runnable listener) {
+        this.wheelReplacedListener = listener;
     }
 
     public List<String> loadLastOpenedWheel() {
@@ -86,6 +94,7 @@ public class FileManager {
         currentFile = null;
         unsaved = false;
         updateTitle();
+        wheelReplacedListener.run();
     }
 
     public void load() {
@@ -100,6 +109,7 @@ public class FileManager {
             currentFile = file;
             unsaved = false;
             updateTitle();
+            wheelReplacedListener.run();
         } catch (IOException e) {
             showError("Could not read file:\n" + e.getMessage());
         }

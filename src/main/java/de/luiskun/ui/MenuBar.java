@@ -20,6 +20,12 @@ public class MenuBar extends JMenuBar {
     /** Einträge, die während des Drehens gesperrt sind (inklusive ihrer Shortcuts). */
     private final List<JMenuItem> spinLockedItems = new ArrayList<>();
 
+    private JMenuItem undoItem;
+    private JMenuItem redoItem;
+    private boolean spinning;
+    private boolean canUndo;
+    private boolean canRedo;
+
     public MenuBar(MainFrame mainFrame, FileManager files) {
         JMenu wheels = menu("Wheels");
         item(wheels, "Create", shortcut(KeyEvent.VK_N, 0), () -> {
@@ -52,15 +58,35 @@ public class MenuBar extends JMenuBar {
         JMenu settings = menu("Settings");
         spinLockedItems.add(item(settings, "Change wheel constants", null,
                 () -> mainFrame.switchMode(MainFrame.MODE_CONSTANT_SETTINGS)));
+        settings.addSeparator();
+        undoItem = item(settings, "Undo removal", shortcut(KeyEvent.VK_Z, 0), mainFrame::undoRemoval);
+        redoItem = item(settings, "Redo removal", shortcut(KeyEvent.VK_Z, KeyEvent.SHIFT_DOWN_MASK), mainFrame::redoRemoval);
+        refreshHistoryItems();
     }
 
     /**
      * Sperrt/entsperrt Create, Load, Save, Save as und die Physik-Einstellungen, solange das Rad dreht.
      */
     public void setSpinLock(boolean spinning) {
+        this.spinning = spinning;
         for (JMenuItem item : spinLockedItems) {
             item.setEnabled(!spinning);
         }
+        refreshHistoryItems();
+    }
+
+    /**
+     * Aktiviert "Undo removal" / "Redo removal" nur, wenn es etwas rückgängig zu machen bzw. zu wiederholen gibt.
+     */
+    public void setHistoryState(boolean canUndo, boolean canRedo) {
+        this.canUndo = canUndo;
+        this.canRedo = canRedo;
+        refreshHistoryItems();
+    }
+
+    private void refreshHistoryItems() {
+        undoItem.setEnabled(!spinning && canUndo);
+        redoItem.setEnabled(!spinning && canRedo);
     }
 
     public void changeColorMode() {

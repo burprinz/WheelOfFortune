@@ -1,6 +1,7 @@
 package de.luiskun.logic;
 
 import java.awt.Color;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 /**
@@ -37,13 +38,21 @@ public final class Colors {
     }
 
     public static void switchToDarkMode() {
-        applyTheme(true);
-        PREFS.putBoolean(DARK_MODE_KEY, true);
+        setDarkMode(true);
     }
 
     public static void switchToLightMode() {
-        applyTheme(false);
-        PREFS.putBoolean(DARK_MODE_KEY, false);
+        setDarkMode(false);
+    }
+
+    private static void setDarkMode(boolean dark) {
+        applyTheme(dark);
+        PREFS.putBoolean(DARK_MODE_KEY, dark);
+        try {
+            PREFS.flush(); // sofort schreiben, nicht erst beim JVM-Ende
+        } catch (BackingStoreException e) {
+            System.err.println("Could not save dark mode setting: " + e.getMessage());
+        }
     }
 
     public static Color colorFor(int index) {
