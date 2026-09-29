@@ -2,11 +2,11 @@ package de.luiskun.logic;
 
 public class WheelConstants {
 
-    private static double DEFAULT_MIN_TOP_SPEED = 10;
-    private static double DEFAULT_MAX_TOP_SPEED = 30;
-    private static double DEFAULT_ACCELERATION = 0.5;
-    private static double DEFAULT_FRICTION = 0.985;
-    private static double DEFAULT_STOP_SPEED = 0.1;
+    public static double DEFAULT_MIN_TOP_SPEED = 10;
+    public static double DEFAULT_MAX_TOP_SPEED = 30;
+    public static double DEFAULT_ACCELERATION = 0.5;
+    public static double DEFAULT_FRICTION = 0.985;
+    public static double DEFAULT_STOP_SPEED = 0.1;
 
     public static double MIN_TOP_SPEED = DEFAULT_MIN_TOP_SPEED;
     public static double MAX_TOP_SPEED = DEFAULT_MAX_TOP_SPEED;

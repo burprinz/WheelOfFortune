@@ -6,17 +6,8 @@ import de.luiskun.logic.WheelConstants;
 import javax.swing.*;
 import java.awt.*;
 
-/**
- * Rechte Seitenleiste für die Physik- / Rad-Einstellungen.
- */
 public class SettingsSidePanel extends JPanel {
 
-    // Standardwerte
-    public static final double DEFAULT_MIN_TOP_SPEED = 10.0;
-    public static final double DEFAULT_MAX_TOP_SPEED = 30.0;
-    public static final double DEFAULT_ACCELERATION = 0.5;
-    public static final double DEFAULT_FRICTION = 0.985;
-    public static final double DEFAULT_STOP_SPEED = 0.1;
 
     private final MainFrame frame;
 
@@ -113,8 +104,11 @@ public class SettingsSidePanel extends JPanel {
         });
 
         restoreDefaultButton.addActionListener(e -> {
-            WheelConstants.restoreDefault();
-            updateSlidersFromWheelConstants();
+            setMinTopSpeed(WheelConstants.DEFAULT_MIN_TOP_SPEED);
+            setMaxTopSpeed(WheelConstants.DEFAULT_MAX_TOP_SPEED);
+            setAcceleration(WheelConstants.DEFAULT_ACCELERATION);
+            setFriction(WheelConstants.DEFAULT_FRICTION);
+            setStopSpeed(WheelConstants.DEFAULT_STOP_SPEED);
         });
 
         cancelButton.addActionListener(e -> frame.switchMode(MainFrame.MODE_WHEEL));

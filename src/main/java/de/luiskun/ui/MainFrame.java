@@ -50,7 +50,8 @@ public class MainFrame extends JFrame {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
-                Popups.unsavedMessageDialog(mainFrame, fileManager);
+                boolean close = Popups.unsavedMessageDialog(mainFrame, fileManager);
+                if (!close) return;
                 fileManager.saveCurrentOpenedWheelAsDefault();
                 System.exit(0);
             }

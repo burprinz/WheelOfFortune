@@ -7,6 +7,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -14,7 +15,6 @@ import java.util.List;
 public class FileManager {
     private static final String APP_TITLE = "WheelOfFortune";
 
-    private static final String LAST_OPENED_FILE_PATH = "lastWheel.txt";
     private static final List<String> DEFAULT_NAMES = List.of("Name1", "Name2", "Name3", "Name4");
 
     private final JFrame frame;
@@ -29,35 +29,40 @@ public class FileManager {
     }
 
     public List<String> loadLastOpenedWheel() {
-        Path lastWheelConfig = Paths.get(LAST_OPENED_FILE_PATH);
+        Path lastWheelConfig = FilePaths.lastWheelConfig();
 
         if (Files.exists(lastWheelConfig)) {
             try {
                 String pathString = Files.readString(lastWheelConfig, StandardCharsets.UTF_8).strip();
-                Path actualFilePath = Paths.get(pathString);
 
-                if (!pathString.isEmpty() && Files.exists(actualFilePath)) {
-                    String content = Files.readString(actualFilePath, StandardCharsets.UTF_8);
-                    List<String> loadedNames = NameLoader.parse(content);
+                if (!pathString.isEmpty()) {
+                    Path actualFilePath = Paths.get(pathString);
 
-                    if (!loadedNames.isEmpty()) {
-                        currentFile = actualFilePath;
-                        return loadedNames;
+                    if (Files.exists(actualFilePath)) {
+                        String content = Files.readString(actualFilePath, StandardCharsets.UTF_8);
+                        List<String> loadedNames = NameLoader.parse(content);
+
+                        if (!loadedNames.isEmpty()) {
+                            currentFile = actualFilePath;
+                            updateTitle();
+                            return loadedNames;
+                        }
                     }
                 }
-            } catch (IOException e) {
+            } catch (IOException | InvalidPathException e) {
                 e.printStackTrace();
             }
         }
-
+        updateTitle();
         return DEFAULT_NAMES;
     }
 
     public void saveCurrentOpenedWheelAsDefault() {
-        Path configPath = Paths.get(LAST_OPENED_FILE_PATH);
+        Path configPath = FilePaths.lastWheelConfig();
 
         if (currentFile != null) {
             try {
+                Files.createDirectories(configPath.getParent());
                 Files.writeString(configPath, currentFile.toAbsolutePath().toString(), StandardCharsets.UTF_8);
             } catch (IOException e) {
                 System.err.println("Fehler beim Speichern von lastWheel.txt: " + e.getMessage());
@@ -85,9 +90,6 @@ public class FileManager {
         Path file = chooser.getSelectedFile().toPath();
         try {
             String text = Files.readString(file, StandardCharsets.UTF_8);
-            if (text.startsWith("\uFEFF")) {
-                text = text.substring(1);
-            }
             sidePanel.setNames(NameLoader.parse(text));
             currentFile = file;
             updateTitle();

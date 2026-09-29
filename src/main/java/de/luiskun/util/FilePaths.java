@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 public final class FilePaths {
 
     private static final String APP_NAME = "WheelOfFortune";
+    private static final String LAST_WHEEL_FILE_NAME = "lastWheel.txt";
 
     private FilePaths() {
     }
@@ -31,5 +32,13 @@ public final class FilePaths {
         Path dir = dataDir().resolve("wheels");
         Files.createDirectories(dir);
         return dir;
+    }
+
+    /**
+     * Speicherort der Datei, die sich das zuletzt geöffnete Rad merkt.
+     * Das Verzeichnis wird hier nicht angelegt.
+     */
+    public static Path lastWheelConfig() {
+        return dataDir().resolve(LAST_WHEEL_FILE_NAME);
     }
 }

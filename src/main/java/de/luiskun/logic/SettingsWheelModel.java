@@ -3,9 +3,12 @@ package de.luiskun.logic;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Test-Rad für die Physik-Einstellungen (nutzt die Slider-Werte statt WheelConstants).
+ */
 public class SettingsWheelModel {
 
-    private List<String> names = List.of("Option 1", "Option 2", "Option 3", "Option 4");
+    private final List<String> names = List.of("Option 1", "Option 2", "Option 3", "Option 4");
 
     private double angle;
     private double speed;
@@ -19,10 +22,6 @@ public class SettingsWheelModel {
 
     public List<String> getNames() {
         return names;
-    }
-
-    public void setNames(List<String> names) {
-        this.names = List.copyOf(names);
     }
 
     public double getAngle() {
@@ -80,16 +79,6 @@ public class SettingsWheelModel {
             }
         }
         return false;
-    }
-
-    public String getWinner() {
-        if (names.isEmpty()) {
-            return "";
-        }
-        int n = names.size();
-        double sliceSize = 360.0 / n;
-        double relativeAngle = ((90.0 - angle) % 360 + 360) % 360;
-        return names.get((int) (relativeAngle / sliceSize) % n);
     }
 
     public void stop() {
