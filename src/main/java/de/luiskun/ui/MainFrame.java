@@ -4,14 +4,15 @@ import de.luiskun.logic.Colors;
 import de.luiskun.logic.RemovalHistory;
 import de.luiskun.logic.RemovalHistory.Removal;
 import de.luiskun.logic.WheelModel;
+import de.luiskun.logic.WheelSound;
 import de.luiskun.util.FileManager;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
-import java.awt.CardLayout;
-import java.awt.Dimension;
-import java.awt.Graphics;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -59,6 +60,19 @@ public class MainFrame extends JFrame {
         cardPanel.add(createSplit(wheelPanel, sidePanel), String.valueOf(MODE_WHEEL));
         cardPanel.add(createSplit(testWheelPanel, settingsSidePanel), String.valueOf(MODE_CONSTANT_SETTINGS));
         add(cardPanel);
+
+        // Space for Spinning
+        KeyStroke ks = KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0);
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(ks,"spin");
+        getRootPane().getActionMap().put("spin", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(currentMode == MODE_WHEEL){
+                    spin();
+                }
+            }
+        });
 
         sidePanel.setNames(fileManager.loadLastOpenedWheel());
         applyNames();
@@ -159,19 +173,39 @@ public class MainFrame extends JFrame {
         boolean testMode = currentMode == MODE_CONSTANT_SETTINGS;
         WheelModel model = testMode ? testModel : spinModel;
 
+        // Segmentwechsel für Tick-Sound erkennen
+        int before = model.getPointerIndex();
         boolean finished = model.update();
+        int after = model.getPointerIndex();
+
+        if (!testMode && before != after && model.isSpinning()) {
+            WheelSound.tick();
+            wheelPanel.pointerKick();
+        }
+
         (testMode ? testWheelPanel : wheelPanel).repaint();
+
         if (!finished) {
             return;
         }
 
         timer.stop();
+
         if (testMode) {
             settingsSidePanel.setTestSpinEnabled(true);
         } else {
             setSpinning(false);
+
+            spinModel.startWinnerAnimation();
+            wheelPanel.startConfetti();
+            WheelSound.win();
+            wheelPanel.repaint();
+
             applyNames();
             offerWinnerRemoval();
+
+            spinModel.stopWinnerAnimation();
+            wheelPanel.repaint();
         }
     }
 
@@ -187,6 +221,7 @@ public class MainFrame extends JFrame {
         if (!Popups.showWinnerDialog(this, winner)) {
             return;
         }
+
 
         names.remove(index);
         sidePanel.setNames(names);

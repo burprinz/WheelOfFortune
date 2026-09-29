@@ -3,7 +3,7 @@ package de.luiskun.ui;
 import de.luiskun.logic.Colors;
 import de.luiskun.logic.WheelModel;
 
-import javax.swing.JPanel;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
@@ -20,6 +20,9 @@ public class WheelPanel extends JPanel {
 
     private final WheelModel model;
 
+    private double pointerShake = 0;
+    private Confetti[] confetti;
+
     public WheelPanel(WheelModel model) {
         this.model = model;
         setPreferredSize(new Dimension(600, 500));
@@ -28,6 +31,8 @@ public class WheelPanel extends JPanel {
 
     @Override
     protected void paintComponent(Graphics g) {
+        pointerShake *= 0.82;
+
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -45,6 +50,31 @@ public class WheelPanel extends JPanel {
                 drawWheel(g2, names, diameter);
             }
         }
+
+        if(confetti != null){
+
+            for(Confetti c : confetti){
+
+                c.x += c.vx;
+                c.y += c.vy;
+
+                c.vy += 0.12;
+                c.r += 8;
+
+                Graphics2D cg = (Graphics2D) g2.create();
+
+                cg.translate(c.x,c.y);
+                cg.rotate(Math.toRadians(c.r));
+
+                cg.setColor(c.color);
+                cg.fillRect(-(int)c.size/2,-(int)c.size/2,(int)c.size,(int)c.size);
+
+                cg.dispose();
+            }
+
+            repaint();
+        }
+
         g2.dispose();
     }
 
@@ -58,7 +88,19 @@ public class WheelPanel extends JPanel {
 
         // Segmente
         for (int i = 0; i < n; i++) {
-            g2.setColor(Colors.colorFor(i));
+            //g2.setColor(Colors.colorFor(i));
+            Color c = Colors.colorFor(i);
+
+            if(model.isWinnerAnimation()){
+
+                if(i == model.getWinnerIndex()){
+                    c = brighten(c);
+                }else{
+                    c = fade(c);
+                }
+            }
+
+            g2.setColor(c);
             g2.fill(slice(cx, cy, r, angle + i * sliceSize, sliceSize));
         }
 
@@ -106,6 +148,7 @@ public class WheelPanel extends JPanel {
     }
 
     private void drawPointer(Graphics2D g2, int x, int wheelTop) {
+        /*
         Polygon pointer = new Polygon(
                 new int[]{x - POINTER_SIZE, x + POINTER_SIZE, x},
                 new int[]{wheelTop - POINTER_SIZE, wheelTop - POINTER_SIZE, wheelTop + POINTER_SIZE * 2},
@@ -115,6 +158,24 @@ public class WheelPanel extends JPanel {
         g2.setColor(Colors.backgroundColor);
         g2.setStroke(new BasicStroke(2f));
         g2.draw(pointer);
+        */
+        Graphics2D p = (Graphics2D) g2.create();
+
+        p.translate(x,wheelTop);
+        p.rotate(Math.toRadians(pointerShake*18));
+
+        Polygon pointer = new Polygon(
+                new int[]{-POINTER_SIZE,POINTER_SIZE,0},
+                new int[]{-POINTER_SIZE,-POINTER_SIZE,POINTER_SIZE*2},
+                3);
+
+        p.setColor(Colors.selectorColor);
+        p.fill(pointer);
+        p.setColor(Colors.backgroundColor);
+        p.setStroke(new BasicStroke(2));
+        p.draw(pointer);
+
+        p.dispose();
     }
 
     private void drawCenteredMessage(Graphics2D g2, String message) {
@@ -143,4 +204,66 @@ public class WheelPanel extends JPanel {
         }
         return text.substring(0, end) + "...";
     }
+
+    private Color brighten(Color c){
+        return new Color(
+                Math.min(255,c.getRed()+70),
+                Math.min(255,c.getGreen()+70),
+                Math.min(255,c.getBlue()+70)
+        );
+    }
+
+    private Color fade(Color c){
+        return new Color(
+                (int)(c.getRed()*0.45),
+                (int)(c.getGreen()*0.45),
+                (int)(c.getBlue()*0.45)
+        );
+    }
+
+    public void pointerKick(){
+        pointerShake = 1;
+    }
+
+    public void startConfetti(){
+
+        confetti = new Confetti[140];
+
+        for(int i=0;i<confetti.length;i++){
+
+            Confetti c = new Confetti();
+
+            c.x = getWidth()/2.0;
+            c.y = getHeight()/2.0;
+
+            double a = Math.random()*Math.PI*2;
+            double s = 2+Math.random()*7;
+
+            c.vx = Math.cos(a)*s;
+            c.vy = Math.sin(a)*s;
+
+            c.size = 4+Math.random()*6;
+            c.r = Math.random()*360;
+
+            c.color = Colors.colorFor(i);
+
+            confetti[i]=c;
+        }
+
+
+        javax.swing.Timer clearTimer = new Timer(2000, null);
+        clearTimer.addActionListener(ev -> {
+            confetti = null;
+            clearTimer.stop();
+            repaint();
+        });
+        clearTimer.setRepeats(false);
+        clearTimer.start();
+    }
+
+    private static class Confetti{
+        double x,y,vx,vy,r,size;
+        Color color;
+    }
 }
+

@@ -3,10 +3,7 @@ package de.luiskun.logic;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * Physik und Zustand eines Rads. Wird für das Hauptrad (Werte aus {@link WheelConstants})
- * und für das Test-Rad der Physik-Einstellungen (Slider-Werte) verwendet.
- */
+
 public class WheelModel {
 
     private List<String> names = List.of();
@@ -20,6 +17,9 @@ public class WheelModel {
     private double acceleration;
     private double friction;
     private double stopSpeed;
+
+    private int lastPointerIndex = -1;
+    private boolean winnerAnimation;
 
     public List<String> getNames() {
         return names;
@@ -35,6 +35,22 @@ public class WheelModel {
 
     public boolean isSpinning() {
         return spinning;
+    }
+
+    public int getPointerIndex() {
+        return getWinnerIndex();
+    }
+
+    public void startWinnerAnimation() {
+        winnerAnimation = true;
+    }
+
+    public void stopWinnerAnimation() {
+        winnerAnimation = false;
+    }
+
+    public boolean isWinnerAnimation() {
+        return winnerAnimation;
     }
 
     /**

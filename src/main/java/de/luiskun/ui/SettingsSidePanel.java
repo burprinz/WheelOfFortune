@@ -20,7 +20,7 @@ public class SettingsSidePanel extends JPanel {
 
     // Slider arbeiten mit ganzen Zahlen: Wert = Sliderwert / scale
     private final SliderRow minTopSpeed = new SliderRow("Min Top Speed", "%.1f", 10, 1.0, 100.0);
-    private final SliderRow maxTopSpeed = new SliderRow("Max Top Speed", "%.1f", 10, 3.0, 300.0);
+    private final SliderRow maxTopSpeed = new SliderRow("Max Top Speed", "%.1f", 10, 3.0, 100.0);
     private final SliderRow acceleration = new SliderRow("Acceleration", "%.2f", 100, 0.05, 5.0);
     // Skaliert die Bremsrate (1 - friction) von 0.1x bis 10x des Standards
     private final SliderRow friction = new SliderRow("Friction", "%.4f", 10000, 0.85, 0.9985);
