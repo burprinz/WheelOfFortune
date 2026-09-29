@@ -7,78 +7,77 @@ import javax.swing.*;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.util.List;
 
 /**
- * Rechte Seitenleiste: Namensliste bearbeiten, Rad drehen, Ergebnis anzeigen.
+ * Rechte Seitenleiste: Namensliste bearbeiten und Rad drehen.
  */
 public class SidePanel extends JPanel {
 
     private final JLabel inputInfoLabel = new JLabel("Names (one per line)");
     private final JTextArea namesArea = new JTextArea();
-    private final JButton spinButton = new JButton("Spin");
+    private final JScrollPane namesScroll = new JScrollPane(namesArea);
+    private final AccentButton spinButton = new AccentButton("Spin", true);
 
-    private final MainFrame frame;
+    /** true, solange der Text per Code (und nicht vom Nutzer) geändert wird. */
+    private boolean programmaticChange;
 
-    public SidePanel(MainFrame frame) {
+    public SidePanel() {
         super(new BorderLayout(8, 8));
-        this.frame = frame;
 
-        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         setPreferredSize(new Dimension(220, 0));
+        setMinimumSize(new Dimension(180, 0));
+
+        namesArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         add(inputInfoLabel, BorderLayout.NORTH);
-        add(new JScrollPane(namesArea), BorderLayout.CENTER);
-
-
-        JPanel bottom = new JPanel(new GridLayout(0, 1, 0, 8));
-        bottom.add(spinButton);
-        add(bottom, BorderLayout.SOUTH);
+        add(namesScroll, BorderLayout.CENTER);
+        add(spinButton, BorderLayout.SOUTH);
     }
 
     public void changeColorMode() {
-        setBackground(Colors.backgroundColor);
+        setBackground(Colors.surfaceColor);
 
         inputInfoLabel.setForeground(Colors.textColor);
-        inputInfoLabel.setBackground(Colors.backgroundColor);
 
         namesArea.setForeground(Colors.textColor);
         namesArea.setBackground(Colors.backgroundColor);
-        namesArea.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(Colors.textColor),
-                BorderFactory.createEmptyBorder(8, 8, 8, 8)
-        ));
+        namesArea.setCaretColor(Colors.textColor);
+        namesArea.setSelectionColor(Colors.accentColor);
+        namesArea.setSelectedTextColor(Colors.accentTextColor);
+
+        namesScroll.setBorder(new LineBorder(Colors.borderColor));
+        namesScroll.getViewport().setBackground(Colors.backgroundColor);
+        repaint();
     }
 
+    /**
+     * Setzt die Namen per Code. Löst {@link #onNamesChanged}, aber nicht {@link #onUserEdit} aus.
+     */
     public void setNames(List<String> names) {
-        namesArea.setText(String.join("\n", names));
+        programmaticChange = true;
+        try {
+            namesArea.setText(String.join("\n", names));
+        } finally {
+            programmaticChange = false;
+        }
     }
 
     public List<String> getNames() {
         return NameLoader.parse(namesArea.getText());
     }
 
+    /** Wird bei jeder Änderung der Namensliste aufgerufen (auch bei Änderungen per Code). */
     public void onNamesChanged(Runnable listener) {
-        namesArea.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                listener.run();
-                frame.unsavedChanges = true;
-            }
+        addDocumentListener(listener, false);
+    }
 
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                listener.run();
-                frame.unsavedChanges = true;
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                listener.run();
-                frame.unsavedChanges = true;
-            }
-        });
+    /** Wird nur aufgerufen, wenn der Nutzer selbst tippt. */
+    public void onUserEdit(Runnable listener) {
+        addDocumentListener(listener, true);
     }
 
     public void onSpin(Runnable listener) {
@@ -92,5 +91,29 @@ public class SidePanel extends JPanel {
     public void setSpinning(boolean spinning) {
         spinButton.setEnabled(!spinning);
         namesArea.setEditable(!spinning);
+    }
+
+    private void addDocumentListener(Runnable listener, boolean userEditsOnly) {
+        Runnable fire = () -> {
+            if (!userEditsOnly || !programmaticChange) {
+                listener.run();
+            }
+        };
+        namesArea.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                fire.run();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                fire.run();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                fire.run();
+            }
+        });
     }
 }

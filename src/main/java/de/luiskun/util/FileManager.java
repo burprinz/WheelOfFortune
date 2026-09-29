@@ -21,6 +21,7 @@ public class FileManager {
     private final SidePanel sidePanel;
 
     private Path currentFile;
+    private boolean unsaved;
 
     public FileManager(JFrame frame, SidePanel sidePanel) {
         this.frame = frame;
@@ -28,57 +29,62 @@ public class FileManager {
         updateTitle();
     }
 
+    public boolean isUnsaved() {
+        return unsaved;
+    }
+
+    /**
+     * Markiert das aktuelle Rad als geändert (Titel bekommt einen Stern).
+     */
+    public void markUnsaved() {
+        if (!unsaved) {
+            unsaved = true;
+            updateTitle();
+        }
+    }
+
     public List<String> loadLastOpenedWheel() {
-        Path lastWheelConfig = FilePaths.lastWheelConfig();
+        try {
+            Path config = FilePaths.lastWheelConfig();
+            if (Files.exists(config)) {
+                String pathString = Files.readString(config, StandardCharsets.UTF_8).strip();
+                Path file = pathString.isEmpty() ? null : Paths.get(pathString);
 
-        if (Files.exists(lastWheelConfig)) {
-            try {
-                String pathString = Files.readString(lastWheelConfig, StandardCharsets.UTF_8).strip();
-
-                if (!pathString.isEmpty()) {
-                    Path actualFilePath = Paths.get(pathString);
-
-                    if (Files.exists(actualFilePath)) {
-                        String content = Files.readString(actualFilePath, StandardCharsets.UTF_8);
-                        List<String> loadedNames = NameLoader.parse(content);
-
-                        if (!loadedNames.isEmpty()) {
-                            currentFile = actualFilePath;
-                            updateTitle();
-                            return loadedNames;
-                        }
+                if (file != null && Files.exists(file)) {
+                    List<String> names = NameLoader.parse(Files.readString(file, StandardCharsets.UTF_8));
+                    if (!names.isEmpty()) {
+                        currentFile = file;
+                        return names;
                     }
                 }
-            } catch (IOException | InvalidPathException e) {
-                e.printStackTrace();
             }
+        } catch (IOException | InvalidPathException e) {
+            e.printStackTrace();
+        } finally {
+            unsaved = false;
+            updateTitle();
         }
-        updateTitle();
         return DEFAULT_NAMES;
     }
 
     public void saveCurrentOpenedWheelAsDefault() {
         Path configPath = FilePaths.lastWheelConfig();
-
-        if (currentFile != null) {
-            try {
+        try {
+            if (currentFile != null) {
                 Files.createDirectories(configPath.getParent());
                 Files.writeString(configPath, currentFile.toAbsolutePath().toString(), StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                System.err.println("Fehler beim Speichern von lastWheel.txt: " + e.getMessage());
-            }
-        } else {
-            try {
+            } else {
                 Files.deleteIfExists(configPath);
-            } catch (IOException e) {
-                System.err.println("Fehler beim Löschen von lastWheel.txt: " + e.getMessage());
             }
+        } catch (IOException e) {
+            System.err.println("Could not update " + configPath.getFileName() + ": " + e.getMessage());
         }
     }
 
     public void newWheel() {
         sidePanel.setNames(List.of());
         currentFile = null;
+        unsaved = false;
         updateTitle();
     }
 
@@ -92,18 +98,15 @@ public class FileManager {
             String text = Files.readString(file, StandardCharsets.UTF_8);
             sidePanel.setNames(NameLoader.parse(text));
             currentFile = file;
+            unsaved = false;
             updateTitle();
         } catch (IOException e) {
-            showError("Could not read File:\n" + e.getMessage());
+            showError("Could not read file:\n" + e.getMessage());
         }
     }
 
     public boolean save() {
-        if (currentFile == null) {
-            return saveAs();
-        } else {
-            return write(currentFile);
-        }
+        return currentFile == null ? saveAs() : write(currentFile);
     }
 
     public boolean saveAs() {
@@ -125,6 +128,7 @@ public class FileManager {
         try {
             Files.writeString(file, String.join("\n", sidePanel.getNames()), StandardCharsets.UTF_8);
             currentFile = file;
+            unsaved = false;
             updateTitle();
             return true;
         } catch (IOException e) {
@@ -141,6 +145,7 @@ public class FileManager {
                     : FilePaths.wheelsDir();
             chooser.setCurrentDirectory(startDir.toFile());
         } catch (IOException ignored) {
+            // Dann eben das Standardverzeichnis des Choosers
         }
         chooser.setFileFilter(new FileNameExtensionFilter("Text files (*.txt)", "txt"));
         return chooser;
@@ -164,8 +169,6 @@ public class FileManager {
 
     private void updateTitle() {
         String name = currentFile == null ? "Untitled" : currentFile.getFileName().toString();
-        frame.setTitle(name + " – " + APP_TITLE);
+        frame.setTitle((unsaved ? "*" : "") + name + " – " + APP_TITLE);
     }
-
-
 }

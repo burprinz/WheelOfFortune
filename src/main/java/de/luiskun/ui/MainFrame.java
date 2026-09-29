@@ -1,15 +1,17 @@
 package de.luiskun.ui;
 
 import de.luiskun.logic.Colors;
-import de.luiskun.logic.SettingsWheelModel;
 import de.luiskun.logic.WheelModel;
 import de.luiskun.util.FileManager;
 
 import javax.swing.*;
-import javax.swing.border.LineBorder;
 import javax.swing.plaf.basic.BasicSplitPaneDivider;
 import javax.swing.plaf.basic.BasicSplitPaneUI;
-import java.awt.*;
+import java.awt.CardLayout;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.List;
 
 public class MainFrame extends JFrame {
@@ -23,71 +25,45 @@ public class MainFrame extends JFrame {
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
 
-    // Wheel
-    private final JSplitPane wheelSplit;
-    // Constant Settings
-    private final JSplitPane constantsSplit;
-
+    // Hauptrad
     private final WheelModel spinModel = new WheelModel();
     private final WheelPanel wheelPanel = new WheelPanel(spinModel);
-    private final SidePanel sidePanel = new SidePanel(this);
+    private final SidePanel sidePanel = new SidePanel();
 
-    private final SettingsWheelModel constantWheelModel = new SettingsWheelModel();
-    private final SettingsWheelPanel constantsWheelPanel = new SettingsWheelPanel(constantWheelModel);
-    private final SettingsSidePanel constantsSidePanel = new SettingsSidePanel(this);
+    // Test-Rad der Physik-Einstellungen
+    private final WheelModel testModel = new WheelModel();
+    private final WheelPanel testWheelPanel = new WheelPanel(testModel);
+    private final SettingsSidePanel settingsSidePanel = new SettingsSidePanel(this);
 
     private final Timer timer = new Timer(FRAME_DELAY_MS, e -> tick());
     private final FileManager fileManager = new FileManager(this, sidePanel);
-
-    boolean unsavedChanges = false;
+    private final MenuBar menuBar = new MenuBar(this, fileManager);
 
     public MainFrame() {
         super("Wheel of Fortune");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-
-        MainFrame mainFrame = this;
-
-        addWindowListener(new java.awt.event.WindowAdapter() {
+        addWindowListener(new WindowAdapter() {
             @Override
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                boolean close = Popups.unsavedMessageDialog(mainFrame, fileManager);
-                if (!close) return;
-                fileManager.saveCurrentOpenedWheelAsDefault();
-                System.exit(0);
+            public void windowClosing(WindowEvent e) {
+                closeApplication();
             }
         });
 
-        setLayout(new BorderLayout());
+        testModel.setNames(List.of("Option 1", "Option 2", "Option 3", "Option 4"));
 
-        wheelSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, wheelPanel, sidePanel);
-        wheelSplit.setResizeWeight(1.0);
-        wheelSplit.setContinuousLayout(true);
-        wheelSplit.setBorder(null);
-
-        constantsSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, constantsWheelPanel, constantsSidePanel);
-
-        cardPanel.add(wheelSplit, String.valueOf(MODE_WHEEL));
-        cardPanel.add(constantsSplit, String.valueOf(MODE_CONSTANT_SETTINGS));
-
-        add(cardPanel, BorderLayout.CENTER);
+        cardPanel.add(createSplit(wheelPanel, sidePanel), String.valueOf(MODE_WHEEL));
+        cardPanel.add(createSplit(testWheelPanel, settingsSidePanel), String.valueOf(MODE_CONSTANT_SETTINGS));
+        add(cardPanel);
 
         sidePanel.setNames(fileManager.loadLastOpenedWheel());
         applyNames();
         sidePanel.onNamesChanged(this::applyNames);
+        sidePanel.onUserEdit(fileManager::markUnsaved);
         sidePanel.onSpin(this::spin);
 
-        // Test Spin Listener
-        constantsSidePanel.onTestSpin((minTopSpeed, maxTopSpeed, acceleration, friction, stopSpeed) -> {
-            boolean started = constantWheelModel.spin(minTopSpeed, maxTopSpeed, acceleration, friction, stopSpeed);
-            if (started) {
-                constantsSidePanel.setTestSpinEnabled(false);
-                if (!timer.isRunning()) {
-                    timer.start();
-                }
-            }
-        });
+        settingsSidePanel.onTestSpin(this::testSpin);
 
-        setJMenuBar(new MenuBar(this, fileManager));
+        setJMenuBar(menuBar);
 
         pack();
         setMinimumSize(new Dimension(500, 350));
@@ -97,57 +73,55 @@ public class MainFrame extends JFrame {
     }
 
     public void switchMode(int mode) {
-        if (timer.isRunning()) {
-            timer.stop();
-        }
+        timer.stop();
+        testModel.stop();
+        settingsSidePanel.setTestSpinEnabled(true);
 
-        constantWheelModel.stop();
-        constantsSidePanel.setTestSpinEnabled(true);
-
-        this.currentMode = mode;
+        currentMode = mode;
         cardLayout.show(cardPanel, String.valueOf(mode));
 
-        if (mode == MODE_WHEEL) {
-            // Falls Apply gedrückt wurde: Hauptrad stoppen und UI entsperren
-            spinModel.stop();
-            sidePanel.setSpinning(false);
-            wheelPanel.repaint();
-        } else if (mode == MODE_CONSTANT_SETTINGS) {
-            constantsSidePanel.updateSlidersFromWheelConstants();
+        if (mode == MODE_CONSTANT_SETTINGS) {
+            settingsSidePanel.updateSlidersFromWheelConstants();
         }
     }
 
     public void changeColorMode() {
-        wheelSplit.setUI(new BasicSplitPaneUI()
-        {
+        getContentPane().setBackground(Colors.backgroundColor);
+        menuBar.changeColorMode();
+        sidePanel.changeColorMode();
+        settingsSidePanel.changeColorMode();
+        repaint();
+    }
+
+    /**
+     * Gemeinsames Aussehen beider Split-Panes (Divider reagiert dynamisch auf das Theme).
+     */
+    private static JSplitPane createSplit(JComponent left, JComponent right) {
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
+        split.setUI(new BasicSplitPaneUI() {
             @Override
-            public BasicSplitPaneDivider createDefaultDivider()
-            {
-                return new BasicSplitPaneDivider(this)
-                {
+            public BasicSplitPaneDivider createDefaultDivider() {
+                return new BasicSplitPaneDivider(this) {
                     @Override
-                    public void paint(Graphics g)
-                    {
+                    public void paint(Graphics g) {
                         g.setColor(Colors.backgroundColor);
-                        g.fillRect(0, 0, getSize().width, getSize().height);
-                        super.paint(g);
+                        g.fillRect(0, 0, getWidth(), getHeight());
+                        g.setColor(Colors.borderColor);
+                        g.fillRect(getWidth() / 2, 0, 1, getHeight());
                     }
                 };
             }
         });
-
-        wheelSplit.setBorder(new LineBorder(Colors.textColor));
-
-        wheelPanel.changeColorMode();
-        sidePanel.changeColorMode();
-        constantsWheelPanel.changeColorMode();
-        constantsSidePanel.changeColorMode();
+        split.setBorder(null);
+        split.setDividerSize(7);
+        split.setResizeWeight(1.0);
+        split.setContinuousLayout(true);
+        return split;
     }
 
     private void applyNames() {
-        List<String> names = sidePanel.getNames();
-        spinModel.setNames(names);
-        sidePanel.setSpinEnabled(!names.isEmpty() && !spinModel.isSpinning());
+        spinModel.setNames(sidePanel.getNames());
+        sidePanel.setSpinEnabled(!spinModel.getNames().isEmpty() && !spinModel.isSpinning());
         wheelPanel.repaint();
     }
 
@@ -155,26 +129,48 @@ public class MainFrame extends JFrame {
         if (!spinModel.spin()) {
             return;
         }
-        sidePanel.setSpinning(true);
+        setSpinning(true);
         timer.start();
     }
 
-    private void tick() {
-        if (currentMode == MODE_WHEEL) {
-            boolean finished = spinModel.update();
-            wheelPanel.repaint();
-            if (finished) {
-                timer.stop();
-                sidePanel.setSpinning(false);
-                Popups.showWinnerDialog(this, sidePanel, spinModel.getWinner());
-            }
-        } else if (currentMode == MODE_CONSTANT_SETTINGS) {
-            boolean finished = constantWheelModel.update();
-            constantsWheelPanel.repaint();
-            if (finished) {
-                timer.stop();
-                constantsSidePanel.setTestSpinEnabled(true);
-            }
+    private void testSpin(double minTopSpeed, double maxTopSpeed, double acceleration, double friction, double stopSpeed) {
+        if (testModel.spin(minTopSpeed, maxTopSpeed, acceleration, friction, stopSpeed)) {
+            settingsSidePanel.setTestSpinEnabled(false);
+            timer.start();
         }
+    }
+
+    /** Sperrt Namensliste, Spin-Button und Menü, solange das Hauptrad dreht. */
+    private void setSpinning(boolean spinning) {
+        sidePanel.setSpinning(spinning);
+        menuBar.setSpinLock(spinning);
+    }
+
+    private void tick() {
+        boolean testMode = currentMode == MODE_CONSTANT_SETTINGS;
+        WheelModel model = testMode ? testModel : spinModel;
+
+        boolean finished = model.update();
+        (testMode ? testWheelPanel : wheelPanel).repaint();
+        if (!finished) {
+            return;
+        }
+
+        timer.stop();
+        if (testMode) {
+            settingsSidePanel.setTestSpinEnabled(true);
+        } else {
+            setSpinning(false);
+            applyNames();
+            Popups.showWinnerDialog(this, sidePanel, fileManager, spinModel.getWinnerIndex());
+        }
+    }
+
+    private void closeApplication() {
+        if (!Popups.unsavedMessageDialog(this, fileManager)) {
+            return;
+        }
+        fileManager.saveCurrentOpenedWheelAsDefault();
+        System.exit(0);
     }
 }

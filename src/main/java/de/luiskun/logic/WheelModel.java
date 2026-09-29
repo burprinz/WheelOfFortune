@@ -3,8 +3,11 @@ package de.luiskun.logic;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Physik und Zustand eines Rads. Wird für das Hauptrad (Werte aus {@link WheelConstants})
+ * und für das Test-Rad der Physik-Einstellungen (Slider-Werte) verwendet.
+ */
 public class WheelModel {
-
 
     private List<String> names = List.of();
 
@@ -13,6 +16,10 @@ public class WheelModel {
     private double topSpeed;
     private boolean braking;
     private boolean spinning;
+
+    private double acceleration;
+    private double friction;
+    private double stopSpeed;
 
     public List<String> getNames() {
         return names;
@@ -31,24 +38,42 @@ public class WheelModel {
     }
 
     /**
-     * Startet einen neuen Dreh.
-     * @return false, wenn drehend oder kein Eintrag
+     * Startet einen Dreh mit den aktuellen {@link WheelConstants}.
+     *
+     * @return false, wenn das Rad schon dreht oder keine Einträge hat
      */
     public boolean spin() {
+        return spin(WheelConstants.MIN_TOP_SPEED, WheelConstants.MAX_TOP_SPEED,
+                WheelConstants.ACCELERATION, WheelConstants.FRICTION, WheelConstants.STOP_SPEED);
+    }
+
+    /**
+     * Startet einen Dreh mit den übergebenen Werten.
+     *
+     * @return false, wenn das Rad schon dreht oder keine Einträge hat
+     */
+    public boolean spin(double minTopSpeed, double maxTopSpeed, double acceleration, double friction, double stopSpeed) {
         if (spinning || names.isEmpty()) {
             return false;
         }
-        speed = 0;
-        topSpeed = WheelConstants.MIN_TOP_SPEED + ThreadLocalRandom.current().nextDouble() * (WheelConstants.MAX_TOP_SPEED - WheelConstants.MIN_TOP_SPEED);
-        braking = false;
-        spinning = true;
+        this.acceleration = acceleration;
+        this.friction = friction;
+        this.stopSpeed = stopSpeed;
+
+        double lo = Math.min(minTopSpeed, maxTopSpeed);
+        double hi = Math.max(minTopSpeed, maxTopSpeed);
+        this.topSpeed = lo + ThreadLocalRandom.current().nextDouble() * (hi - lo);
+
+        this.speed = 0;
+        this.braking = false;
+        this.spinning = true;
         return true;
     }
 
     /**
      * Ein Simulationsschritt.
      *
-     * @return true, wenn rad finished
+     * @return true, wenn das Rad in diesem Schritt zum Stillstand gekommen ist
      */
     public boolean update() {
         if (!spinning) {
@@ -58,36 +83,37 @@ public class WheelModel {
         angle = (angle + speed) % 360;
 
         if (!braking) {
-            speed += WheelConstants.ACCELERATION;
+            speed += acceleration;
             if (speed >= topSpeed) {
                 speed = topSpeed;
                 braking = true;
             }
         } else {
-            speed *= WheelConstants.FRICTION;
-            if (speed < WheelConstants.STOP_SPEED) {
-                speed = 0;
-                spinning = false;
+            speed *= friction;
+            if (speed < stopSpeed) {
+                stop();
                 return true;
             }
         }
         return false;
     }
 
-
-    public String getWinner() {
+    /**
+     * Index des Segments unter dem Zeiger (oben, bei 90°) oder -1 ohne Einträge.
+     */
+    public int getWinnerIndex() {
         if (names.isEmpty()) {
-            return "";
+            return -1;
         }
         int n = names.size();
         double sliceSize = 360.0 / n;
         double relativeAngle = ((90.0 - angle) % 360 + 360) % 360;
-        return names.get((int) (relativeAngle / sliceSize) % n);
+        return (int) (relativeAngle / sliceSize) % n;
     }
 
     public void stop() {
-        this.speed = 0;
-        this.spinning = false;
-        this.braking = false;
+        speed = 0;
+        spinning = false;
+        braking = false;
     }
 }

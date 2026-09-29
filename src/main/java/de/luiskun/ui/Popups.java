@@ -2,50 +2,60 @@ package de.luiskun.ui;
 
 import de.luiskun.util.FileManager;
 
-import javax.swing.*;
+import javax.swing.JOptionPane;
+import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Popups {
+public final class Popups {
 
-    public static boolean unsavedMessageDialog(MainFrame mainFrame, FileManager files) {
-        if (!mainFrame.unsavedChanges) {
+    private Popups() {
+    }
+
+    /**
+     * Fragt bei ungespeicherten Änderungen nach.
+     *
+     * @return true, wenn die Aktion fortgesetzt werden darf (nichts offen, verworfen oder gespeichert)
+     */
+    public static boolean unsavedMessageDialog(Component parent, FileManager files) {
+        if (!files.isUnsaved()) {
             return true;
         }
 
-        boolean saved = false;
-        while (!saved) {
-            Object[] options = {"Cancel", "Abandon", "Save", "Save as"};
-            int choice = JOptionPane.showOptionDialog(
-                    mainFrame,
-                    "You have unsaved changes. Save?",
-                    "Unsaved changes",
-                    JOptionPane.DEFAULT_OPTION,
-                    JOptionPane.INFORMATION_MESSAGE,
-                    null,
-                    options,
-                    options[0]
-            );
+        Object[] options = {"Cancel", "Discard", "Save", "Save as"};
+        int choice = JOptionPane.showOptionDialog(
+                parent,
+                "You have unsaved changes. Save?",
+                "Unsaved changes",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
 
-            if (choice == 1) {
-                saved = true;
-            } else if (choice == 2) {
-                saved = files.save();
-            } else if (choice == 3) {
-                saved = files.saveAs();
-            } else {
-                return false;
-            }
-        }
-        mainFrame.unsavedChanges = false;
-        return true;
+        return switch (choice) {
+            case 1 -> true;
+            case 2 -> files.save();
+            case 3 -> files.saveAs();
+            default -> false;
+        };
     }
 
-    public static void showWinnerDialog(MainFrame mainFrame, SidePanel sidePanel, String winner) {
+    /**
+     * Zeigt den Gewinner. Bei "Remove" wird genau der Eintrag mit dem Index entfernt
+     * (bei doppelten Namen würde ein Entfernen per Name den falschen treffen).
+     */
+    public static void showWinnerDialog(Component parent, SidePanel sidePanel, FileManager files, int winnerIndex) {
+        List<String> names = new ArrayList<>(sidePanel.getNames());
+        if (winnerIndex < 0 || winnerIndex >= names.size()) {
+            return;
+        }
+
         Object[] options = {"Keep", "Remove"};
         int choice = JOptionPane.showOptionDialog(
-                mainFrame,
-                winner,
+                parent,
+                names.get(winnerIndex),
                 "Winner",
                 JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE,
@@ -55,10 +65,9 @@ public class Popups {
         );
 
         if (choice == 1) {
-            List<String> names = new ArrayList<>(sidePanel.getNames());
-            names.remove(winner);
+            names.remove(winnerIndex);
             sidePanel.setNames(names);
-            mainFrame.unsavedChanges = true;
+            files.markUnsaved();
         }
     }
 }

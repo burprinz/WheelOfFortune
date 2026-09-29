@@ -4,99 +4,105 @@ import de.luiskun.logic.Colors;
 import de.luiskun.util.FileManager;
 
 import javax.swing.*;
-import java.awt.Component;
-import java.awt.event.InputEvent;
+import javax.swing.border.LineBorder;
+import java.awt.Graphics;
+import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MenuBar extends JMenuBar {
 
-    private final MainFrame mainFrame;
-    private final FileManager files;
-    private final List<JMenuItem> fileItems = new ArrayList<>();
+    private static final int SHORTCUT_MASK = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
-    public MenuBar(MainFrame main, FileManager files) {
-        this.mainFrame = main;
-        this.files = files;
+    private final List<JMenu> menus = new ArrayList<>();
+    private final List<JMenuItem> items = new ArrayList<>();
+    /** Einträge, die während des Drehens gesperrt sind (inklusive ihrer Shortcuts). */
+    private final List<JMenuItem> spinLockedItems = new ArrayList<>();
 
-        JMenu fileMenu = new JMenu("Wheels");
-        fileMenu.add(item("Create",
-                KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK),
-                () -> {
-                    if (Popups.unsavedMessageDialog(mainFrame, files)) {
-                        files.newWheel();
-                        mainFrame.unsavedChanges = false;
-                    }
-                }));
-        fileMenu.add(item("Load",
-                KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.CTRL_DOWN_MASK),
-                () -> {
-                    if (Popups.unsavedMessageDialog(mainFrame, files)) {
-                        files.load();
-                        mainFrame.unsavedChanges = false;
-                    }
-                }));
-        fileMenu.add(item("Save",
-                KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK),
-                () -> {
-                    boolean saved = files.save();
-                    if (saved) {
-                        mainFrame.unsavedChanges = false;
-                    }
-                }));
-        fileMenu.add(item("Save as",
-                KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK),
-                () -> {
-                    boolean saved = files.saveAs();
-                    if (saved) {
-                        mainFrame.unsavedChanges = false;
-                    }
-                }));
-        add(fileMenu);
-
-        // Datei-Menüpunkte merken, damit sie während des Drehens gesperrt werden können
-        for (Component c : fileMenu.getMenuComponents()) {
-            if (c instanceof JMenuItem mi) {
-                fileItems.add(mi);
+    public MenuBar(MainFrame mainFrame, FileManager files) {
+        JMenu wheels = menu("Wheels");
+        item(wheels, "Create", shortcut(KeyEvent.VK_N, 0), () -> {
+            if (Popups.unsavedMessageDialog(mainFrame, files)) {
+                files.newWheel();
             }
-        }
+        });
+        item(wheels, "Load", shortcut(KeyEvent.VK_L, 0), () -> {
+            if (Popups.unsavedMessageDialog(mainFrame, files)) {
+                files.load();
+            }
+        });
+        item(wheels, "Save", shortcut(KeyEvent.VK_S, 0), files::save);
+        item(wheels, "Save as", shortcut(KeyEvent.VK_S, KeyEvent.SHIFT_DOWN_MASK), files::saveAs);
+        spinLockedItems.addAll(items);
 
-        JMenu appearanceMenu = new JMenu("Appearance");
-        appearanceMenu.add(item("Switch to Light-Mode", null, () -> {
-            Colors.switchToLightMode();
+        JMenu appearance = menu("Appearance");
+        JCheckBoxMenuItem darkMode = new JCheckBoxMenuItem("Dark mode", Colors.isDarkMode());
+        darkMode.addActionListener(e -> {
+            if (darkMode.isSelected()) {
+                Colors.switchToDarkMode();
+            } else {
+                Colors.switchToLightMode();
+            }
             mainFrame.changeColorMode();
-        }));
-        appearanceMenu.add(item("Switch to Dark-Mode", null, () -> {
-            Colors.switchToDarkMode();
-            mainFrame.changeColorMode();
-        }));
-        add(appearanceMenu);
+        });
+        appearance.add(darkMode);
+        items.add(darkMode);
 
-        JMenu settingsMenu = new JMenu("Settings");
-        settingsMenu.add(item("Change wheel constants", null, () -> {
-            mainFrame.switchMode(MainFrame.MODE_CONSTANT_SETTINGS);
-        }));
-        add(settingsMenu);
-
+        JMenu settings = menu("Settings");
+        spinLockedItems.add(item(settings, "Change wheel constants", null,
+                () -> mainFrame.switchMode(MainFrame.MODE_CONSTANT_SETTINGS)));
     }
 
     /**
-     * Sperrt/entsperrt Create, Load, Save und Save as (inklusive Shortcuts).
+     * Sperrt/entsperrt Create, Load, Save, Save as und die Physik-Einstellungen, solange das Rad dreht.
      */
-    public void setFileActionsEnabled(boolean enabled) {
-        for (JMenuItem item : fileItems) {
-            item.setEnabled(enabled);
+    public void setSpinLock(boolean spinning) {
+        for (JMenuItem item : spinLockedItems) {
+            item.setEnabled(!spinning);
         }
     }
 
-    private static JMenuItem item(String text, KeyStroke key, Runnable action) {
+    public void changeColorMode() {
+        setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Colors.borderColor));
+        for (JMenu menu : menus) {
+            menu.setForeground(Colors.textColor);
+            menu.getPopupMenu().setBackground(Colors.surfaceColor);
+            menu.getPopupMenu().setBorder(new LineBorder(Colors.borderColor));
+        }
+        for (JMenuItem item : items) {
+            item.setOpaque(true);
+            item.setBackground(Colors.surfaceColor);
+            item.setForeground(Colors.textColor);
+        }
+        repaint();
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        g.setColor(Colors.surfaceColor);
+        g.fillRect(0, 0, getWidth(), getHeight());
+    }
+
+    private JMenu menu(String text) {
+        JMenu menu = new JMenu(text);
+        menus.add(menu);
+        add(menu);
+        return menu;
+    }
+
+    private JMenuItem item(JMenu menu, String text, KeyStroke key, Runnable action) {
         JMenuItem item = new JMenuItem(text);
         if (key != null) {
             item.setAccelerator(key);
         }
         item.addActionListener(e -> action.run());
+        menu.add(item);
+        items.add(item);
         return item;
     }
 
+    private static KeyStroke shortcut(int keyCode, int extraMask) {
+        return KeyStroke.getKeyStroke(keyCode, SHORTCUT_MASK | extraMask);
+    }
 }
