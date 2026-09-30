@@ -244,7 +244,6 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /** Fragt nach dem Spin, ob der Gewinner behalten oder entfernt werden soll. */
     private void offerWinnerRemoval() {
         List<String> names = new ArrayList<>(sidePanel.getNames());
         int index = spinModel.getWinnerIndex();
@@ -265,7 +264,6 @@ public class MainFrame extends JFrame {
         updateHistoryMenu();
     }
 
-    /** Fügt den zuletzt entfernten Eintrag an seiner alten Position wieder ein. */
     public void undoRemoval() {
         Removal removal = removalHistory.popUndo();
         if (removal == null) {
@@ -282,7 +280,6 @@ public class MainFrame extends JFrame {
         updateHistoryMenu();
     }
 
-    /** Entfernt den zuletzt wiederhergestellten Eintrag erneut. */
     public void redoRemoval() {
         Removal removal = removalHistory.popRedo();
         if (removal == null) {
