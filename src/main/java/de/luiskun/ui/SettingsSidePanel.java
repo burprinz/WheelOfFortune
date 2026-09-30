@@ -22,7 +22,7 @@ public class SettingsSidePanel extends JPanel {
     private final SliderRow minTopSpeed = new SliderRow("Min Top Speed", "%.1f", 10, 1.0, 100.0);
     private final SliderRow maxTopSpeed = new SliderRow("Max Top Speed", "%.1f", 10, 3.0, 100.0);
     private final SliderRow acceleration = new SliderRow("Acceleration", "%.2f", 100, 0.05, 5.0);
-    // Skaliert die Bremsrate (1 - friction) von 0.1x bis 10x des Standards
+    // Je näher an 1, desto länger läuft das Rad aus
     private final SliderRow friction = new SliderRow("Friction", "%.4f", 10000, 0.85, 0.9985);
     private final SliderRow stopSpeed = new SliderRow("Stop Speed", "%.3f", 1000, 0.01, 1.0);
     private final List<SliderRow> rows = List.of(minTopSpeed, maxTopSpeed, acceleration, friction, stopSpeed);

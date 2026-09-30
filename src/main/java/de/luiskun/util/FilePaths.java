@@ -10,6 +10,7 @@ public final class FilePaths {
 
     private static final String APP_NAME = "WheelOfFortune";
     private static final String LAST_WHEEL_FILE_NAME = "lastWheel.txt";
+    private static final String RECENT_FILE_NAME = "recent.txt";
 
     private FilePaths() {
     }
@@ -42,13 +43,11 @@ public final class FilePaths {
         return dataDir().resolve(LAST_WHEEL_FILE_NAME);
     }
 
-    public static Path appDir() throws IOException {
-        Path dir = Paths.get(
-                System.getProperty("user.home"),
-                ".wheeloffortune"
-        );
-
-        Files.createDirectories(dir);
-        return dir;
+    /**
+     * Speicherort der Liste zuletzt verwendeter Räder (liegt jetzt ebenfalls im Datenverzeichnis).
+     * Das Verzeichnis wird hier nicht angelegt.
+     */
+    public static Path recentFilesConfig() {
+        return dataDir().resolve(RECENT_FILE_NAME);
     }
 }

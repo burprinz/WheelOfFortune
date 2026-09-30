@@ -5,6 +5,10 @@ import de.luiskun.ui.SidePanel;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -60,16 +64,14 @@ public class FileManager {
                 String pathString = Files.readString(config, StandardCharsets.UTF_8).strip();
                 Path file = pathString.isEmpty() ? null : Paths.get(pathString);
 
-                if (file != null && Files.exists(file)) {
-                    List<String> names = NameLoader.parse(Files.readString(file, StandardCharsets.UTF_8));
-                    if (!names.isEmpty()) {
-                        currentFile = file;
-                        return names;
-                    }
+                if (file != null && Files.isRegularFile(file)) {
+                    List<String> names = NameLoader.parse(readText(file));
+                    currentFile = file;
+                    return names;
                 }
             }
         } catch (IOException | InvalidPathException e) {
-            e.printStackTrace();
+            System.err.println("Could not load last wheel: " + e.getMessage());
         } finally {
             unsaved = false;
             updateTitle();
@@ -104,10 +106,12 @@ public class FileManager {
         if (chooser.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        Path file = chooser.getSelectedFile().toPath();
+        load(chooser.getSelectedFile().toPath());
+    }
+
+    public void load(Path file) {
         try {
-            String text = Files.readString(file, StandardCharsets.UTF_8);
-            sidePanel.setNames(NameLoader.parse(text));
+            sidePanel.setNames(NameLoader.parse(readText(file)));
             currentFile = file;
             remember(file);
             unsaved = false;
@@ -115,29 +119,6 @@ public class FileManager {
             wheelReplacedListener.run();
         } catch (IOException e) {
             showError("Could not read file:\n" + e.getMessage());
-        }
-    }
-
-    public void load(Path file){
-
-        try{
-
-            String text = Files.readString(file);
-
-            sidePanel.setNames(NameLoader.parse(text));
-
-            currentFile = file;
-            unsaved = false;
-
-            remember(file);
-
-            updateTitle();
-
-            wheelReplacedListener.run();
-
-        }catch(IOException e){
-
-            showError("Could not read file.");
         }
     }
 
@@ -154,7 +135,8 @@ public class FileManager {
             return false;
         }
         Path file = withTxtExtension(chooser.getSelectedFile().toPath());
-        if (Files.exists(file) && !confirmOverwrite(file)) {
+        // Die aktuell geöffnete Datei darf ohne Rückfrage überschrieben werden
+        if (Files.exists(file) && !file.equals(currentFile) && !confirmOverwrite(file)) {
             return false;
         }
         return write(file);
@@ -171,6 +153,23 @@ public class FileManager {
         } catch (IOException e) {
             showError("Could not save file:\n" + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Liest eine Textdatei als UTF-8. Ist sie kein gültiges UTF-8 (z. B. ältere Windows-Editoren),
+     * wird sie als Windows-1252 gelesen statt mit einem Fehler abzubrechen.
+     */
+    private static String readText(Path file) throws IOException {
+        byte[] bytes = Files.readAllBytes(file);
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString();
+        } catch (CharacterCodingException e) {
+            return new String(bytes, Charset.forName("windows-1252"));
         }
     }
 
@@ -209,60 +208,54 @@ public class FileManager {
         frame.setTitle((unsaved ? "*" : "") + name + " – " + APP_TITLE);
     }
 
+    /**
+     * Zuletzt verwendete Räder (neueste zuerst, nur noch existierende Dateien).
+     */
     public List<Path> getRecentFiles() {
+        Path config = FilePaths.recentFilesConfig();
+        if (!Files.exists(config)) {
+            return List.of();
+        }
         try {
-            Path cfg = FilePaths.appDir().resolve("recent.txt");
-
-            if(!Files.exists(cfg))
-                return List.of();
-
-            return Files.readAllLines(cfg).stream()
-                    .map(Path::of)
-                    .filter(Files::exists)
-                    .limit(MAX_RECENT)
-                    .toList();
-
-        } catch(IOException e){
+            List<Path> result = new ArrayList<>();
+            for (String line : Files.readAllLines(config, StandardCharsets.UTF_8)) {
+                if (line.isBlank()) {
+                    continue;
+                }
+                try {
+                    Path path = Paths.get(line.strip());
+                    if (Files.isRegularFile(path)) {
+                        result.add(path);
+                    }
+                } catch (InvalidPathException ignored) {
+                    // Kaputte Zeile überspringen
+                }
+                if (result.size() >= MAX_RECENT) {
+                    break;
+                }
+            }
+            return result;
+        } catch (IOException e) {
             return List.of();
         }
     }
 
-    public static Path appDir() throws IOException {
-        Path dir = Paths.get(
-                System.getProperty("user.home"),
-                ".wheeloffortune"
-        );
-
-        Files.createDirectories(dir);
-        return dir;
-    }
-
-    private void remember(Path file){
-
-        try{
-
-            List<String> entries = new ArrayList<>();
-
-            entries.add(file.toAbsolutePath().toString());
-
-            for(Path p : getRecentFiles()){
-
-                String s = p.toAbsolutePath().toString();
-
-                if(!s.equals(entries.get(0)))
-                    entries.add(s);
+    private void remember(Path file) {
+        String newest = file.toAbsolutePath().toString();
+        List<String> entries = new ArrayList<>();
+        entries.add(newest);
+        for (Path p : getRecentFiles()) {
+            String s = p.toAbsolutePath().toString();
+            if (!s.equals(newest) && entries.size() < MAX_RECENT) {
+                entries.add(s);
             }
-
-            if(entries.size() > MAX_RECENT)
-                entries = entries.subList(0,MAX_RECENT);
-
-            Files.createDirectories(FilePaths.appDir());
-
-            Files.write(
-                    FilePaths.appDir().resolve("recent.txt"),
-                    entries
-            );
-
-        }catch(IOException ignored){}
+        }
+        try {
+            Path config = FilePaths.recentFilesConfig();
+            Files.createDirectories(config.getParent());
+            Files.write(config, entries, StandardCharsets.UTF_8);
+        } catch (IOException ignored) {
+            // Die Recent-Liste ist nur ein Komfort und darf nie das Speichern/Laden stören
+        }
     }
 }

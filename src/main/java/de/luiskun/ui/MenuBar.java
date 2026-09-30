@@ -5,6 +5,8 @@ import de.luiskun.util.FileManager;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 import java.awt.Graphics;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
@@ -29,47 +31,38 @@ public class MenuBar extends JMenuBar {
 
     public MenuBar(MainFrame mainFrame, FileManager files) {
         JMenu wheels = menu("Wheels");
-        item(wheels, "Create", shortcut(KeyEvent.VK_N, 0), () -> {
+        spinLockedItems.add(item(wheels, "Create", shortcut(KeyEvent.VK_N, 0), () -> {
             if (Popups.unsavedMessageDialog(mainFrame, files)) {
                 files.newWheel();
             }
-        });
-        item(wheels, "Load", shortcut(KeyEvent.VK_L, 0), () -> {
+        }));
+        spinLockedItems.add(item(wheels, "Load", shortcut(KeyEvent.VK_L, 0), () -> {
             if (Popups.unsavedMessageDialog(mainFrame, files)) {
                 files.load();
             }
-        });
-        item(wheels, "Save", shortcut(KeyEvent.VK_S, 0), files::save);
-        item(wheels, "Save as", shortcut(KeyEvent.VK_S, KeyEvent.SHIFT_DOWN_MASK), files::saveAs);
-        spinLockedItems.addAll(items);
+        }));
+        spinLockedItems.add(item(wheels, "Save", shortcut(KeyEvent.VK_S, 0), files::save));
+        spinLockedItems.add(item(wheels, "Save as", shortcut(KeyEvent.VK_S, KeyEvent.SHIFT_DOWN_MASK), files::saveAs));
 
         JMenu recent = new JMenu("Recent");
         wheels.add(recent);
         menus.add(recent);
-
-        Runnable refreshRecent = () -> {
-            recent.removeAll();
-            for(Path p : files.getRecentFiles()){
-                JMenuItem i = new JMenuItem(
-                        p.getFileName().toString()
-                );
-                i.addActionListener(e -> {
-
-                    if(Popups.unsavedMessageDialog(mainFrame,files))
-                        files.load(p);
-
-                });
-                recent.add(i);
-                items.add(i);
+        spinLockedItems.add(recent);
+        // Die Liste wird bei jedem Öffnen neu aufgebaut, sonst wäre sie nach dem ersten Start veraltet
+        recent.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                rebuildRecent(recent, mainFrame, files);
             }
 
-            if(recent.getItemCount()==0){
-                JMenuItem empty = new JMenuItem("Empty");
-                empty.setEnabled(false);
-                recent.add(empty);
+            @Override
+            public void menuDeselected(MenuEvent e) {
             }
-        };
-        refreshRecent.run();
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
 
         JMenu appearance = menu("Appearance");
         JCheckBoxMenuItem darkMode = new JCheckBoxMenuItem("Dark mode", Colors.isDarkMode());
@@ -93,21 +86,39 @@ public class MenuBar extends JMenuBar {
         refreshHistoryItems();
 
         JMenu tools = menu("Tools");
-        item(tools,"Shuffle",null,()->{
-            mainFrame.shuffleNames();
-        });
+        spinLockedItems.add(item(tools, "Shuffle", null, mainFrame::shuffleNames));
+        spinLockedItems.add(item(tools, "Sort A-Z", null, mainFrame::sortNames));
+        spinLockedItems.add(item(tools, "Remove duplicates", null, mainFrame::removeDuplicates));
 
-        item(tools,"Sort A-Z",null,()->{
-            mainFrame.sortNames();
-        });
+        JMenu help = menu("Help");
+        item(help, "How to use", KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), mainFrame::showHelp);
+    }
 
-        item(tools,"Remove duplicates",null,()->{
-            mainFrame.removeDuplicates();
-        });
+    private void rebuildRecent(JMenu recent, MainFrame mainFrame, FileManager files) {
+        recent.removeAll();
+        for (Path p : files.getRecentFiles()) {
+            JMenuItem entry = new JMenuItem(p.getFileName().toString());
+            entry.setToolTipText(p.toString());
+            entry.addActionListener(e -> {
+                if (Popups.unsavedMessageDialog(mainFrame, files)) {
+                    files.load(p);
+                }
+            });
+            styleItem(entry);
+            recent.add(entry);
+        }
+
+        if (recent.getItemCount() == 0) {
+            JMenuItem empty = new JMenuItem("Empty");
+            empty.setEnabled(false);
+            styleItem(empty);
+            recent.add(empty);
+        }
     }
 
     /**
-     * Sperrt/entsperrt Create, Load, Save, Save as und die Physik-Einstellungen, solange das Rad dreht.
+     * Sperrt/entsperrt Create, Load, Save, Save as, Recent, die Physik-Einstellungen und die Namen-Werkzeuge,
+     * solange das Rad dreht.
      */
     public void setSpinLock(boolean spinning) {
         this.spinning = spinning;
@@ -139,11 +150,15 @@ public class MenuBar extends JMenuBar {
             menu.getPopupMenu().setBorder(new LineBorder(Colors.borderColor));
         }
         for (JMenuItem item : items) {
-            item.setOpaque(true);
-            item.setBackground(Colors.surfaceColor);
-            item.setForeground(Colors.textColor);
+            styleItem(item);
         }
         repaint();
+    }
+
+    private static void styleItem(JMenuItem item) {
+        item.setOpaque(true);
+        item.setBackground(Colors.surfaceColor);
+        item.setForeground(Colors.textColor);
     }
 
     @Override

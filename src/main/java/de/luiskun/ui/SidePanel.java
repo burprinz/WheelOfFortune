@@ -1,6 +1,7 @@
 package de.luiskun.ui;
 
 import de.luiskun.logic.Colors;
+import de.luiskun.logic.WheelEntry;
 import de.luiskun.util.NameLoader;
 
 import javax.swing.*;
@@ -35,6 +36,7 @@ public class SidePanel extends JPanel {
         setMinimumSize(new Dimension(180, 0));
 
         namesArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        namesArea.setToolTipText("<html>One entry per line.<br>Optional weight: <b>Name;2</b></html>");
 
         add(inputInfoLabel, BorderLayout.NORTH);
         add(namesScroll, BorderLayout.CENTER);
@@ -69,8 +71,14 @@ public class SidePanel extends JPanel {
         }
     }
 
+    /** Die Zeilen der Liste (inklusive Gewichtung, z. B. "Anna;2"). */
     public List<String> getNames() {
         return NameLoader.parse(namesArea.getText());
+    }
+
+    /** Die Einträge mit erkannter Gewichtung; gleiche Reihenfolge wie {@link #getNames()}. */
+    public List<WheelEntry> getEntries() {
+        return NameLoader.parseEntries(namesArea.getText());
     }
 
     /** Wird bei jeder Änderung der Namensliste aufgerufen (auch bei Änderungen per Code). */

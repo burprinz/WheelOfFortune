@@ -46,6 +46,7 @@ public class MainFrame extends JFrame {
     private final MenuBar menuBar = new MenuBar(this, fileManager);
 
     private final RemovalHistory removalHistory = new RemovalHistory();
+    private HelpDialog helpDialog;
 
     public MainFrame() {
         super("Wheel of Fortune");
@@ -57,6 +58,7 @@ public class MainFrame extends JFrame {
             }
         });
 
+        WheelSound.preload();
         testModel.setNames(List.of("Option 1", "Option 2", "Option 3", "Option 4"));
 
         cardPanel.add(createSplit(wheelPanel, sidePanel), String.valueOf(MODE_WHEEL));
@@ -103,12 +105,14 @@ public class MainFrame extends JFrame {
         setTransferHandler(new TransferHandler(){
             @Override
             public boolean canImport(TransferSupport s){
-                return s.isDataFlavorSupported(
-                        DataFlavor.javaFileListFlavor
-                );
+                // Während des Drehens und in den Physik-Einstellungen darf kein Rad ersetzt werden
+                return currentMode == MODE_WHEEL
+                        && !spinModel.isSpinning()
+                        && s.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
             }
 
             @Override
+            @SuppressWarnings("unchecked")
             public boolean importData(TransferSupport s){
                 if(!canImport(s))
                     return false;
@@ -117,7 +121,8 @@ public class MainFrame extends JFrame {
                             s.getTransferable().getTransferData(
                                     DataFlavor.javaFileListFlavor
                             );
-                    if(files.isEmpty())
+                    if(files.isEmpty()
+                            || !files.get(0).getName().toLowerCase().endsWith(".txt"))
                         return false;
                     if(!Popups.unsavedMessageDialog(MainFrame.this,fileManager))
                         return false;
@@ -148,6 +153,9 @@ public class MainFrame extends JFrame {
         menuBar.changeColorMode();
         sidePanel.changeColorMode();
         settingsSidePanel.changeColorMode();
+        if (helpDialog != null) {
+            helpDialog.refresh();
+        }
         repaint();
     }
 
@@ -178,7 +186,7 @@ public class MainFrame extends JFrame {
     }
 
     private void applyNames() {
-        spinModel.setNames(sidePanel.getNames());
+        spinModel.setEntries(sidePanel.getEntries());
         sidePanel.setSpinEnabled(!spinModel.getNames().isEmpty() && !spinModel.isSpinning());
         wheelPanel.repaint();
     }
@@ -245,21 +253,21 @@ public class MainFrame extends JFrame {
     }
 
     private void offerWinnerRemoval() {
-        List<String> names = new ArrayList<>(sidePanel.getNames());
+        // Zeilen der Liste (inklusive ";Gewichtung"), damit Undo den Eintrag unverändert zurückbringt
+        List<String> lines = new ArrayList<>(sidePanel.getNames());
         int index = spinModel.getWinnerIndex();
-        if (index < 0 || index >= names.size()) {
+        if (index < 0 || index >= lines.size() || index >= spinModel.getNames().size()) {
             return;
         }
 
-        String winner = names.get(index);
+        String winner = spinModel.getNames().get(index);
         if (!Popups.showWinnerDialog(this, winner)) {
             return;
         }
 
-
-        names.remove(index);
-        sidePanel.setNames(names);
-        removalHistory.record(new Removal(index, winner));
+        String removedLine = lines.remove(index);
+        sidePanel.setNames(lines);
+        removalHistory.record(new Removal(index, removedLine));
         fileManager.markUnsaved();
         updateHistoryMenu();
     }
@@ -310,6 +318,15 @@ public class MainFrame extends JFrame {
         }
         fileManager.saveCurrentOpenedWheelAsDefault();
         System.exit(0);
+    }
+
+    public void showHelp() {
+        if (helpDialog == null) {
+            helpDialog = new HelpDialog(this);
+        }
+        helpDialog.refresh();
+        helpDialog.setVisible(true);
+        helpDialog.toFront();
     }
 
     public void shuffleNames(){
